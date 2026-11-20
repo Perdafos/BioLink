@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import {
   Plus,
@@ -161,50 +162,20 @@ function isColorLight(hex: string): boolean {
 
 // --- SOLID QR CODE SVG COMPONENT ---
 
-const SolidQRCode: React.FC<{ url: string }> = ({ url }) => {
-  const size = 17;
-  let hash = 0;
-  for (let i = 0; i < url.length; i++) {
-    hash = (hash << 5) - hash + url.charCodeAt(i);
-    hash |= 0;
-  }
-
-  const isFinder = (r: number, c: number) =>
-    (r < 5 && c < 5) || (r < 5 && c >= size - 5) || (r >= size - 5 && c < 5);
-
-  const isFinderFilled = (r: number, c: number) => {
-    const nr = r >= size - 5 ? r - (size - 5) : r;
-    const nc = c >= size - 5 ? c - (size - 5) : c;
-    if (nr === 0 || nr === 4 || nc === 0 || nc === 4) return true;
-    return nr === 2 && nc === 2;
-  };
-
-  return (
-    <div className="p-4 bg-white border border-slate-200 rounded-2xl inline-block">
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-44 h-44 block" shapeRendering="crispEdges">
-        <rect width={size} height={size} fill="#FFFFFF" />
-        {Array.from({ length: size }).map((_, r) =>
-          Array.from({ length: size }).map((__, c) => {
-            const filled = isFinder(r, c)
-              ? isFinderFilled(r, c)
-              : Math.abs(Math.sin(hash + r * 31 + c * 17)) > 0.48;
-            if (!filled) return null;
-            return (
-              <rect
-                key={`${r}-${c}`}
-                x={c}
-                y={r}
-                width={1}
-                height={1}
-                fill={isFinder(r, c) ? '#0EA5E9' : '#0F172A'}
-              />
-            );
-          })
-        )}
-      </svg>
-    </div>
-  );
-};
+const SolidQRCode: React.FC<{ url: string }> = ({ url }) => (
+  <div className="p-4 bg-white border border-slate-200 rounded-2xl inline-block">
+    <QRCodeSVG
+      value={url}
+      size={176}
+      level="M"
+      bgColor="#FFFFFF"
+      fgColor="#0F172A"
+      marginSize={2}
+      title="QR Code halaman bio"
+      className="block"
+    />
+  </div>
+);
 
 // --- REUSABLE LIVE PHONE PREVIEW COMPONENT ---
 
