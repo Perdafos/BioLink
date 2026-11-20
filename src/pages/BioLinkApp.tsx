@@ -37,7 +37,6 @@ import {
   Users,
   Settings,
   Sparkles,
-  Building2,
   CalendarDays,
   PanelLeft,
 } from 'lucide-react';
@@ -51,6 +50,18 @@ import { Button } from '../components/ui/button';
 
 type AppStep = 'login' | 'step-links' | 'step-profile' | 'step-color' | 'transition' | 'dashboard';
 type DashboardTab = 'content' | 'header' | 'design';
+type DashboardSection =
+  | 'overview'
+  | 'media-kit'
+  | 'messaging'
+  | 'audience'
+  | 'insights'
+  | 'business-cards'
+  | 'social-planner'
+  | 'instagram-auto-reply'
+  | 'link-shortener'
+  | 'setup'
+  | 'settings';
 type HeaderLayoutType = 'classic' | 'hero' | 'banner';
 type ButtonVariant = 'solid' | 'outline' | 'soft';
 type FontChoice = 'Inter' | 'DM Sans' | 'Plus Jakarta Sans' | 'JetBrains Mono';
@@ -470,6 +481,17 @@ export default function BioLinkApp() {
   // Dashboard States
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('content');
   const [dashboardView, setDashboardView] = useState<'overview' | 'editor'>('overview');
+  const [dashboardSection, setDashboardSection] = useState<DashboardSection>('overview');
+  const [analyticsRange, setAnalyticsRange] = useState<'7' | '30' | '90'>('7');
+  const [draftMessage, setDraftMessage] = useState('');
+  const [audienceEmail, setAudienceEmail] = useState('');
+  const [audienceList, setAudienceList] = useState<string[]>([]);
+  const [plannedPost, setPlannedPost] = useState('');
+  const [plannedDate, setPlannedDate] = useState('');
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
+  const [autoReplyMessage, setAutoReplyMessage] = useState(
+    'Terima kasih sudah menghubungi saya. Saya akan segera membalas pesan Anda.'
+  );
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
@@ -1587,19 +1609,18 @@ export default function BioLinkApp() {
     const totalClicks = data.links.reduce((total, link) => total + link.clicks, 0);
 
     const sidebarItems = [
-      { label: 'My Linktree', icon: LayoutGrid, active: true },
-      { label: 'Earn', icon: Building2, chevron: true },
-      { label: 'Media kit', icon: Link2 },
-      { label: 'Messaging', icon: MessageCircle, chevron: true },
-      { label: 'Audience', icon: Users, chevron: true },
-      { label: 'Insights', icon: BarChart3 },
+      { label: 'My Linktree', icon: LayoutGrid, section: 'overview' as DashboardSection },
+      { label: 'Media kit', icon: Link2, section: 'media-kit' as DashboardSection },
+      { label: 'Messaging', icon: MessageCircle, section: 'messaging' as DashboardSection },
+      { label: 'Audience', icon: Users, section: 'audience' as DashboardSection },
+      { label: 'Insights', icon: BarChart3, section: 'insights' as DashboardSection },
     ];
 
     const toolItems = [
-      { label: 'Business cards', icon: UserSquare2 },
-      { label: 'Social planner', icon: CalendarDays },
-      { label: 'Instagram auto-reply', icon: Instagram },
-      { label: 'Link shortener', icon: ExternalLink },
+      { label: 'Business cards', icon: UserSquare2, section: 'business-cards' as DashboardSection },
+      { label: 'Social planner', icon: CalendarDays, section: 'social-planner' as DashboardSection },
+      { label: 'Instagram auto-reply', icon: Instagram, section: 'instagram-auto-reply' as DashboardSection },
+      { label: 'Link shortener', icon: ExternalLink, section: 'link-shortener' as DashboardSection },
     ];
 
     return (
@@ -1637,19 +1658,15 @@ export default function BioLinkApp() {
                 <button
                   key={item.label}
                   type="button"
-                  onClick={() => {
-                    if (item.label === 'My Linktree') setDashboardView('overview');
-                    else showToast(`${item.label} akan segera tersedia`);
-                  }}
+                  onClick={() => setDashboardSection(item.section)}
                   className={`mb-0.5 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors ${
-                    item.active
+                    dashboardSection === item.section
                       ? 'bg-violet-50 text-violet-700'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
                   }`}
                 >
                   <Icon className="size-4" strokeWidth={1.8} />
                   <span className="flex-1 text-left">{item.label}</span>
-                  {item.chevron && <ChevronDown className="size-3.5 text-slate-400" />}
                 </button>
               );
             })}
@@ -1661,7 +1678,7 @@ export default function BioLinkApp() {
                 <button
                   key={item.label}
                   type="button"
-                  onClick={() => showToast(`${item.label} akan segera tersedia`)}
+                  onClick={() => setDashboardSection(item.section)}
                   className="mb-0.5 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
                 >
                   <Icon className="size-4" strokeWidth={1.8} />
@@ -1678,16 +1695,34 @@ export default function BioLinkApp() {
                   <circle cx="22" cy="22" r="18" fill="none" stroke="#ede9fe" strokeWidth="5" />
                   <circle cx="22" cy="22" r="18" fill="none" stroke="#8b5cf6" strokeWidth="5" strokeLinecap="round" strokeDasharray="56 113" />
                 </svg>
-                <span className="text-xs font-bold text-violet-600">50%</span>
+                <span className="text-xs font-bold text-violet-600">
+                  {Math.round([
+                    Boolean(data.avatarUrl),
+                    Boolean(data.displayName),
+                    Boolean(data.username),
+                    Boolean(data.bio),
+                    data.links.length > 0,
+                    Object.values(data.socials).some(Boolean),
+                  ].filter(Boolean).length / 6 * 100)}%
+                </span>
               </div>
               <div>
                 <p className="text-xs font-semibold">Your setup checklist</p>
-                <p className="mt-1 text-[11px] text-slate-500">3 of 6 complete</p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {[
+                    Boolean(data.avatarUrl),
+                    Boolean(data.displayName),
+                    Boolean(data.username),
+                    Boolean(data.bio),
+                    data.links.length > 0,
+                    Object.values(data.socials).some(Boolean),
+                  ].filter(Boolean).length} of 6 complete
+                </p>
               </div>
             </div>
             <Button
               type="button"
-              onClick={() => setDashboardView('editor')}
+              onClick={() => setDashboardSection('setup')}
               className="h-9 w-full rounded-full bg-violet-600 text-xs font-semibold hover:bg-violet-700"
             >
               Finish setup
@@ -1696,7 +1731,7 @@ export default function BioLinkApp() {
 
           <button
             type="button"
-            onClick={() => setShowAccountMenu((prev) => !prev)}
+            onClick={() => setDashboardSection('settings')}
             className="mx-3 mb-3 flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:bg-slate-50"
           >
             <Settings className="size-4" />
@@ -1740,6 +1775,133 @@ export default function BioLinkApp() {
           </header>
 
           <div className="mx-auto max-w-[1120px] px-4 py-7 sm:px-8">
+            {dashboardSection !== 'overview' ? (
+              <section className="mx-auto max-w-[900px]">
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setDashboardSection('overview')}
+                      className="mb-2 flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900"
+                    >
+                      <ArrowLeft className="size-3.5" /> Back to dashboard
+                    </button>
+                    <h1 className="text-[23px] font-bold tracking-tight">
+                      {({
+                        'overview': 'Dashboard',
+                        'media-kit': 'Media kit',
+                        messaging: 'Messaging',
+                        audience: 'Audience',
+                        insights: 'Insights',
+                        'business-cards': 'Business cards',
+                        'social-planner': 'Social planner',
+                        'instagram-auto-reply': 'Instagram auto-reply',
+                        'link-shortener': 'Link shortener',
+                        setup: 'Setup checklist',
+                        settings: 'Settings',
+                      } as Record<DashboardSection, string>)[dashboardSection]}
+                    </h1>
+                  </div>
+                </div>
+
+                {dashboardSection === 'setup' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none">
+                    <CardContent className="space-y-3 p-5">
+                      {[
+                        ['Profile photo', Boolean(data.avatarUrl), 'header'],
+                        ['Display name', Boolean(data.displayName), 'header'],
+                        ['Username', Boolean(data.username), 'header'],
+                        ['Short bio', Boolean(data.bio), 'header'],
+                        ['Add at least one link', data.links.length > 0, 'content'],
+                        ['Add a social channel', Object.values(data.socials).some(Boolean), 'header'],
+                      ].map(([label, complete, tab]) => (
+                        <button
+                          key={String(label)}
+                          type="button"
+                          onClick={() => {
+                            setDashboardView('editor');
+                            setDashboardTab(tab as DashboardTab);
+                          }}
+                          className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-4 text-left hover:border-violet-300"
+                        >
+                          <span className={`grid size-8 place-items-center rounded-full ${complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                            {complete ? <Check className="size-4" /> : <Plus className="size-4" />}
+                          </span>
+                          <span className="flex-1 text-sm font-semibold">{String(label)}</span>
+                          <ChevronRight className="size-4 text-slate-400" />
+                        </button>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {dashboardSection === 'settings' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none">
+                    <CardContent className="space-y-5 p-5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold">Display name</label>
+                        <input value={data.displayName} onChange={(e) => setData((prev) => ({ ...prev, displayName: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold">Username</label>
+                        <div className="flex rounded-xl border border-slate-200">
+                          <span className="px-3 py-2.5 text-sm text-slate-400">linktree/</span>
+                          <input value={data.username} onChange={(e) => setData((prev) => ({ ...prev, username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold">Account email</label>
+                        <input type="email" value={data.accountEmail} onChange={(e) => setData((prev) => ({ ...prev, accountEmail: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                      </div>
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                        <span className="text-sm font-semibold text-slate-600">Cloud sync status</span>
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{syncStatus === 'saving' ? 'Saving...' : 'Saved'}</span>
+                      </div>
+                      <Button type="button" onClick={() => showToast('Pengaturan berhasil disimpan')} className="rounded-full bg-violet-600 hover:bg-violet-700">Save settings</Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {dashboardSection === 'media-kit' && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><img src={data.avatarUrl} alt="" className="mb-4 size-20 rounded-full object-cover" /><h2 className="font-bold">{data.displayName}</h2><p className="mt-1 text-sm text-slate-500">{data.bio}</p></CardContent></Card>
+                    <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="space-y-3 p-5"><p className="text-xs font-semibold text-slate-500">Performance</p><p className="text-3xl font-bold">{totalClicks}</p><p className="text-sm text-slate-500">Total link clicks</p><Button type="button" variant="outline" onClick={() => { const content = `${data.displayName}\n${data.bio}\n${getPublicProfileUrl(data.username)}\nTotal link clicks: ${totalClicks}`; const url = URL.createObjectURL(new Blob([content], { type: 'text/plain' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${data.username}-media-kit.txt`; anchor.click(); URL.revokeObjectURL(url); showToast('Media kit downloaded'); }} className="rounded-full">Download media kit</Button></CardContent></Card>
+                  </div>
+                )}
+
+                {dashboardSection === 'messaging' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><label className="mb-2 block text-sm font-semibold">Announcement</label><textarea value={draftMessage} onChange={(e) => setDraftMessage(e.target.value)} placeholder="Write a message to your audience..." className="min-h-32 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm" /><Button type="button" onClick={() => { if (!draftMessage.trim()) return showToast('Tuliskan pesan terlebih dahulu'); showToast('Pesan berhasil disimpan'); }} className="mt-3 rounded-full bg-violet-600 hover:bg-violet-700">Save draft</Button></CardContent></Card>
+                )}
+
+                {dashboardSection === 'audience' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><form onSubmit={(e) => { e.preventDefault(); const email = audienceEmail.trim(); if (!email) return; setAudienceList((prev) => [...prev, email]); setAudienceEmail(''); showToast('Audience ditambahkan'); }} className="flex gap-2"><input type="email" value={audienceEmail} onChange={(e) => setAudienceEmail(e.target.value)} placeholder="Audience email" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><Button type="submit" className="rounded-full bg-violet-600 hover:bg-violet-700">Add</Button></form><div className="mt-4 space-y-2">{audienceList.length === 0 ? <p className="text-sm text-slate-500">Belum ada audience yang ditambahkan.</p> : audienceList.map((email, index) => <div key={`${email}-${index}`} className="flex items-center rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><Mail className="mr-2 size-4 text-slate-400" /><span className="flex-1">{email}</span><button type="button" onClick={() => setAudienceList((prev) => prev.filter((_, i) => i !== index))} className="text-slate-400 hover:text-rose-600"><Trash2 className="size-4" /></button></div>)}</div></CardContent></Card>
+                )}
+
+                {dashboardSection === 'insights' && (
+                  <div className="space-y-4">
+                    <div className="flex gap-2">{(['7', '30', '90'] as const).map((range) => <Button key={range} type="button" variant={analyticsRange === range ? 'default' : 'outline'} onClick={() => setAnalyticsRange(range)} className={`rounded-full ${analyticsRange === range ? 'bg-violet-600 hover:bg-violet-700' : ''}`}>{range} days</Button>)}</div>
+                    <div className="grid gap-4 md:grid-cols-3"><Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs text-slate-500">Visitors</p><p className="mt-2 text-3xl font-bold">{totalClicks}</p></CardContent></Card><Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs text-slate-500">Active links</p><p className="mt-2 text-3xl font-bold">{activeLinks}</p></CardContent></Card><Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs text-slate-500">Range</p><p className="mt-2 text-3xl font-bold">{analyticsRange}</p></CardContent></Card></div>
+                  </div>
+                )}
+
+                {dashboardSection === 'business-cards' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><div className="mx-auto max-w-md rounded-2xl bg-slate-900 p-7 text-white"><img src={data.avatarUrl} alt="" className="size-16 rounded-full object-cover" /><p className="mt-5 text-xl font-bold">{data.displayName}</p><p className="mt-1 text-sm text-slate-300">{data.bio}</p><p className="mt-5 text-xs text-sky-300">linktree/{data.username}</p></div><Button type="button" onClick={() => window.print()} className="mt-4 rounded-full bg-violet-600 hover:bg-violet-700">Print business card</Button></CardContent></Card>
+                )}
+
+                {dashboardSection === 'social-planner' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="space-y-3 p-5"><textarea value={plannedPost} onChange={(e) => setPlannedPost(e.target.value)} placeholder="Post caption..." className="min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm" /><input type="datetime-local" value={plannedDate} onChange={(e) => setPlannedDate(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><Button type="button" onClick={() => { if (!plannedPost.trim() || !plannedDate) return showToast('Lengkapi caption dan jadwal'); showToast('Post berhasil dijadwalkan'); }} className="rounded-full bg-violet-600 hover:bg-violet-700">Schedule post</Button></CardContent></Card>
+                )}
+
+                {dashboardSection === 'instagram-auto-reply' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="space-y-4 p-5"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold">Auto-reply</p><p className="text-xs text-slate-500">Reply to new direct messages</p></div><button type="button" onClick={() => setAutoReplyEnabled((prev) => !prev)} className={`w-11 rounded-full p-0.5 ${autoReplyEnabled ? 'bg-violet-600' : 'bg-slate-200'}`}><span className={`block size-5 rounded-full bg-white transition-transform ${autoReplyEnabled ? 'translate-x-5' : ''}`} /></button></div><textarea value={autoReplyMessage} onChange={(e) => setAutoReplyMessage(e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" /><Button type="button" onClick={() => showToast('Auto-reply berhasil disimpan')} className="rounded-full bg-violet-600 hover:bg-violet-700">Save auto-reply</Button></CardContent></Card>
+                )}
+
+                {dashboardSection === 'link-shortener' && (
+                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="mb-2 text-sm font-semibold">Public link</p><div className="flex gap-2"><input readOnly value={getPublicProfileUrl(data.username)} className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><Button type="button" onClick={handleCopyShareUrl} className="rounded-full"><Copy className="size-4" /> Copy</Button></div></CardContent></Card>
+                )}
+              </section>
+            ) : (
+              <>
             <div className="mb-8 flex items-center justify-between">
               <h1 className="text-[23px] font-bold tracking-tight">
                 Good morning, {data.displayName}
@@ -1800,16 +1962,20 @@ export default function BioLinkApp() {
             <section className="mt-8">
               <h2 className="mb-4 text-[15px] font-bold">In the last week</h2>
               <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-                <Card className="min-h-[230px] rounded-[18px] border-slate-200 shadow-none">
+                <Card
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDashboardSection('insights')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setDashboardSection('insights');
+                  }}
+                  className="min-h-[230px] cursor-pointer rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300"
+                >
                   <CardHeader className="flex-row items-center justify-between px-5 py-4">
                     <CardTitle className="text-[13px]">Linktree visitors</CardTitle>
-                    <button
-                      type="button"
-                      onClick={() => showToast('Rentang waktu: 7 hari terakhir')}
-                      className="flex items-center gap-1 text-[11px] text-slate-500"
-                    >
-                      Last 7 days <ChevronRight className="size-3.5" />
-                    </button>
+                    <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                      {analyticsRange} days <ChevronRight className="size-3.5" />
+                    </span>
                   </CardHeader>
                   <CardContent className="px-5">
                     {totalClicks === 0 ? (
@@ -1823,7 +1989,15 @@ export default function BioLinkApp() {
                   </CardContent>
                 </Card>
 
-                <Card className="hidden min-h-[230px] overflow-hidden rounded-[18px] border-slate-200 shadow-none md:block">
+                <Card
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDashboardSection('audience')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setDashboardSection('audience');
+                  }}
+                  className="hidden min-h-[230px] cursor-pointer overflow-hidden rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300 md:block"
+                >
                   <CardHeader className="px-5 py-4">
                     <CardTitle className="text-[13px]">Audience growth</CardTitle>
                   </CardHeader>
@@ -1842,6 +2016,8 @@ export default function BioLinkApp() {
                 </Card>
               </div>
             </section>
+              </>
+            )}
           </div>
 
           <button
