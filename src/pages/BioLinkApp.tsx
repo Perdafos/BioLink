@@ -235,7 +235,6 @@ const LivePhoneMockup: React.FC<{
                 : 'bg-black/25 text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
           </div>
 
           {onCopyShare && (
