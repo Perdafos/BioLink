@@ -62,7 +62,7 @@ set search_path = public
 as $$
   select *
   from public.bio_profiles
-  where username = p_username
+  where lower(username) = lower(trim(p_username))
   limit 1;
 $$;
 

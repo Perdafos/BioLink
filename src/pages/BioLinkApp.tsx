@@ -112,9 +112,15 @@ const APP_URL = (
   isLocalHost ? window.location.origin : import.meta.env.VITE_APP_URL || window.location.origin
 ).replace(/\/$/, '');
 
-const PUBLIC_USERNAME = window.location.pathname === '/'
+const PROFILE_QUERY_USERNAME = new URLSearchParams(window.location.search).get('profile');
+const PATH_USERNAME = window.location.pathname === '/'
   ? null
   : decodeURIComponent(window.location.pathname).replace(/^\//, '').replace(/\/$/, '') || null;
+const PUBLIC_USERNAME_VALUE = (PROFILE_QUERY_USERNAME || PATH_USERNAME)?.trim();
+const PUBLIC_USERNAME = PUBLIC_USERNAME_VALUE ? PUBLIC_USERNAME_VALUE.toLowerCase() : null;
+
+const getPublicProfileUrl = (username: string) =>
+  `${APP_URL}/?profile=${encodeURIComponent(username.trim().toLowerCase())}`;
 
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
@@ -805,7 +811,7 @@ export default function BioLinkApp() {
   };
 
   const handleCopyShareUrl = () => {
-    const shareLink = `${APP_URL}/${data.username || 'perdafos'}`;
+    const shareLink = getPublicProfileUrl(data.username || 'perdafos');
     navigator.clipboard?.writeText(shareLink);
     setCopied(true);
     showToast(`Link disalin: ${shareLink}`);
@@ -2488,7 +2494,7 @@ export default function BioLinkApp() {
             </div>
 
             <div className="flex flex-col items-center">
-              <SolidQRCode url={`${APP_URL}/${data.username}`} />
+              <SolidQRCode url={getPublicProfileUrl(data.username)} />
               <p className="font-bold text-sm text-slate-900 mt-3">{data.displayName}</p>
               <span className="text-xs font-medium text-sky-600 bg-sky-50 border border-sky-200 px-3 py-1 rounded-full mt-1">
                 biolink.id/{data.username}
