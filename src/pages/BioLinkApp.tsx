@@ -228,15 +228,6 @@ const LivePhoneMockup: React.FC<{
       {/* Top Action Icons inside Phone */}
       {!skeletonMode && (
         <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold backdrop-blur-sm ${
-              lightBg && data.headerLayout !== 'hero'
-                ? 'bg-slate-900/10 text-slate-800'
-                : 'bg-black/25 text-white'
-            }`}
-          >
-          </div>
-
           {onCopyShare && (
             <button
               type="button"
