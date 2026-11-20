@@ -225,25 +225,6 @@ const LivePhoneMockup: React.FC<{
           : 'w-[325px] sm:w-[345px] min-h-[630px] max-h-[76vh] rounded-[40px] border border-slate-200/80 shadow-[0_12px_40px_rgba(15,23,42,0.08)]'
       }`}
     >
-      {/* Top Action Icons inside Phone */}
-      {!skeletonMode && (
-        <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-          {onCopyShare && (
-            <button
-              type="button"
-              onClick={onCopyShare}
-              title="Salin tautan"
-              className={`pointer-events-auto w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer ${
-                lightBg && data.headerLayout !== 'hero'
-                  ? 'bg-slate-900/10 text-slate-800 hover:bg-slate-900/20'
-                  : 'bg-black/25 text-white hover:bg-black/40'
-              }`}
-            >
-              <Share2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Scrollable Phone Interior */}
       <div className="h-full overflow-y-auto flex flex-col justify-between pb-6">
