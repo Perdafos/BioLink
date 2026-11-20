@@ -16,7 +16,6 @@ import {
   LayoutGrid,
   UserSquare2,
   Paintbrush,
-  Menu,
   ChevronDown,
   MoreVertical,
   Upload,
@@ -34,7 +33,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { BrandMark } from '../components/atoms/BrandMark';
-import { StatusDot } from '../components/atoms/StatusDot';
 import { ToastNotification } from '../components/molecules/ToastNotification';
 import { AuthTemplate } from '../components/templates/AuthTemplate';
 
@@ -1572,29 +1570,15 @@ export default function BioLinkApp() {
   // ============================================================================
   // RENDER 6: DASHBOARD UTAMA
   // ============================================================================
-  const totalClicks = data.links.reduce((sum, item) => sum + item.clicks, 0);
-
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-slate-900 flex flex-col">
       {/* TOAST NOTIFICATION */}
       {toast && <ToastNotification message={toast} />}
 
       {/* TOP BAR */}
-      <header className="sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 flex items-center justify-between">
+      <header className="transparent-50 sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         {/* Left Hamburger / Stats */}
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setShowAccountMenu((prev) => !prev)}
-            className="w-10 h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
-            title="Menu Navigasi"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-full">
-            <StatusDot className="w-1.5 h-1.5 bg-sky-500" />
-            {totalClicks} total klik
-          </span>
           {syncStatus === 'saving' && (
             <span className="hidden md:inline-block text-[11px] text-slate-400">
               Menyimpan...
@@ -1608,7 +1592,7 @@ export default function BioLinkApp() {
         </div>
 
         {/* Center Account Dropdown Pill */}
-        <div className="relative">
+        <div className="relative justify-self-center">
           <button
             type="button"
             onClick={() => setShowAccountMenu((prev) => !prev)}
@@ -1661,7 +1645,7 @@ export default function BioLinkApp() {
         </div>
 
         {/* Right Share / Copy Link Button */}
-        <div className="flex items-center gap-2">
+        <div className="justify-self-end flex items-center gap-2">
           <button
             type="button"
             onClick={handleCopyShareUrl}
