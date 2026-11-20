@@ -1017,9 +1017,17 @@ export default function BioLinkApp() {
     return (
       <main
         style={{ backgroundColor: publicProfile.wallpaperColor }}
-        className="min-h-screen flex justify-center px-4 py-6"
+        className="min-h-[100dvh] flex items-center justify-center px-4 py-8"
       >
-        <LivePhoneMockup data={publicProfile} />
+        <LivePhoneMockup
+          data={publicProfile}
+          onLinkClick={(id) => {
+            void supabase.rpc('increment_profile_link_click', {
+              p_username: PUBLIC_USERNAME,
+              p_link_id: id,
+            });
+          }}
+        />
       </main>
     );
   }
