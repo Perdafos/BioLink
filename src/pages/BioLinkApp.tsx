@@ -24,7 +24,6 @@ import {
   Undo2,
   Redo2,
   ExternalLink,
-  Sparkles,
   LogOut,
   RotateCcw,
   X,
@@ -185,14 +184,12 @@ const LivePhoneMockup: React.FC<{
   skeletonMode?: boolean;
   tilted3D?: boolean;
   onLinkClick?: (id: string) => void;
-  onCopyShare?: () => void;
 }> = ({
   data,
   compact = false,
   skeletonMode = false,
   tilted3D = false,
   onLinkClick,
-  onCopyShare,
 }) => {
   const lightBg = isColorLight(data.wallpaperColor);
   const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
@@ -2334,7 +2331,6 @@ export default function BioLinkApp() {
             <LivePhoneMockup
               data={data}
               onLinkClick={handleIncrementClick}
-              onCopyShare={handleCopyShareUrl}
             />
 
             <div className="hidden sm:flex flex-col gap-2 bg-white border border-slate-200 p-1.5 rounded-full shadow-2xs">
