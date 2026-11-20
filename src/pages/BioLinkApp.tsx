@@ -503,11 +503,11 @@ export default function BioLinkApp() {
   const [showContactFields, setShowContactFields] = useState(false);
 
   useEffect(() => {
-    setBusinessCardName((current) => current || data.displayName);
+    setBusinessCardName(data.displayName);
   }, [data.displayName]);
 
   useEffect(() => {
-    setContactEmail((current) => current || data.accountEmail);
+    setContactEmail(data.accountEmail);
   }, [data.accountEmail]);
 
   useEffect(() => {
@@ -515,19 +515,15 @@ export default function BioLinkApp() {
       const saved = window.localStorage.getItem('biolink-business-card');
       if (!saved) return;
       const settings = JSON.parse(saved) as {
-        name?: string;
         color?: string;
         shareDetailsBack?: boolean;
         saveContactEnabled?: boolean;
         phone?: string;
-        email?: string;
       };
-      if (settings.name) setBusinessCardName(settings.name);
       if (settings.color) setBusinessCardColor(settings.color);
       if (typeof settings.shareDetailsBack === 'boolean') setShareDetailsBack(settings.shareDetailsBack);
       if (typeof settings.saveContactEnabled === 'boolean') setSaveContactEnabled(settings.saveContactEnabled);
       if (settings.phone) setContactPhone(settings.phone);
-      if (settings.email) setContactEmail(settings.email);
     } catch {
       // Ignore invalid saved business card settings.
     }
@@ -535,12 +531,10 @@ export default function BioLinkApp() {
 
   useEffect(() => {
     window.localStorage.setItem('biolink-business-card', JSON.stringify({
-      name: businessCardName,
       color: businessCardColor,
       shareDetailsBack,
       saveContactEnabled,
       phone: contactPhone,
-      email: contactEmail,
     }));
   }, [
     businessCardName,
@@ -2058,13 +2052,28 @@ export default function BioLinkApp() {
                           className="flex min-h-[290px] flex-col p-5"
                           style={{ backgroundColor: businessCardColor }}
                         >
+                          <img
+                            src={data.avatarUrl}
+                            alt={businessCardName || data.displayName}
+                            className="mb-3 size-12 rounded-full border-2 border-white/80 object-cover shadow-sm"
+                          />
                           <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">Name</div>
                           <p className="mt-1 truncate text-[13px] font-bold text-slate-950">
                             {businessCardName || data.displayName}
                           </p>
+                          {data.bio && (
+                            <p className="mt-1 line-clamp-2 text-[9px] leading-3 text-slate-700">
+                              {data.bio}
+                            </p>
+                          )}
+                          {data.accountEmail && (
+                            <p className="mt-1 truncate text-[9px] text-slate-700">
+                              {data.accountEmail}
+                            </p>
+                          )}
                           <div className="mt-4 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">URL</div>
                           <p className="mt-1 truncate text-[11px] font-semibold text-slate-700">
-                            linktree/{data.username}
+                            {getPublicProfileUrl(data.username).replace(/^https?:\/\//, '')}
                           </p>
                           <a
                             href={getPublicProfileUrl(data.username)}
