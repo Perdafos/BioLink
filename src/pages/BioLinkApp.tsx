@@ -39,6 +39,8 @@ import {
   Sparkles,
   CalendarDays,
   PanelLeft,
+  Download,
+  Phone,
 } from 'lucide-react';
 import { BrandMark } from '../components/atoms/BrandMark';
 import { ToastNotification } from '../components/molecules/ToastNotification';
@@ -52,7 +54,6 @@ type AppStep = 'login' | 'step-links' | 'step-profile' | 'step-color' | 'transit
 type DashboardTab = 'content' | 'header' | 'design';
 type DashboardSection =
   | 'overview'
-  | 'media-kit'
   | 'messaging'
   | 'audience'
   | 'insights'
@@ -492,15 +493,22 @@ export default function BioLinkApp() {
   const [autoReplyMessage, setAutoReplyMessage] = useState(
     'Terima kasih sudah menghubungi saya. Saya akan segera membalas pesan Anda.'
   );
-  const [mediaKitStep, setMediaKitStep] = useState<1 | 2>(1);
-  const [mediaKitPrimary, setMediaKitPrimary] = useState('');
-  const [socialConnections, setSocialConnections] = useState<
-    Partial<Record<'instagram' | 'tiktok' | 'tiktok-business' | 'youtube', {
-      connected: boolean;
-      username: string;
-      accountId?: string;
-    }>>
-  >({});
+  const [businessCardName, setBusinessCardName] = useState(data.displayName);
+  const [businessCardColor, setBusinessCardColor] = useState('#B8F34A');
+  const [showBusinessCardIntro, setShowBusinessCardIntro] = useState(true);
+  const [shareDetailsBack, setShareDetailsBack] = useState(true);
+  const [saveContactEnabled, setSaveContactEnabled] = useState(true);
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState(data.accountEmail);
+  const [showContactFields, setShowContactFields] = useState(false);
+
+  useEffect(() => {
+    setBusinessCardName((current) => current || data.displayName);
+  }, [data.displayName]);
+
+  useEffect(() => {
+    setContactEmail((current) => current || data.accountEmail);
+  }, [data.accountEmail]);
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
@@ -522,70 +530,6 @@ export default function BioLinkApp() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isHydratingRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    try {
-      const savedConnections = window.localStorage.getItem('biolink-social-connections');
-      const savedPrimary = window.localStorage.getItem('biolink-media-primary');
-      if (savedConnections) setSocialConnections(JSON.parse(savedConnections));
-      if (savedPrimary) setMediaKitPrimary(savedPrimary);
-    } catch {
-      // Ignore invalid local connection data.
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const connectedPlatform = params.get('connected');
-    const connectedAccount = params.get('account');
-    const oauthError = params.get('oauth_error');
-    if (oauthError) {
-      setDashboardSection('media-kit');
-      showToast(`OAuth gagal: ${oauthError}`);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-    if (connectedPlatform && connectedAccount) {
-      const platform = connectedPlatform as 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube';
-      setSocialConnections((previous) => {
-        const next = {
-          ...previous,
-          [platform]: { connected: true, username: connectedAccount },
-        };
-        window.localStorage.setItem('biolink-social-connections', JSON.stringify(next));
-        return next;
-      });
-      setDashboardSection('media-kit');
-      setMediaKitStep(2);
-      showToast(`${connectedAccount} berhasil terhubung`);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    supabase
-      .from('social_connections')
-      .select('platform, account_id, username')
-      .eq('user_id', userId)
-      .then(({ data: connections, error }) => {
-        if (error || !connections) return;
-
-        const next: typeof socialConnections = {};
-        connections.forEach((connection) => {
-          const platform = connection.platform as
-            | 'instagram'
-            | 'tiktok'
-            | 'tiktok-business'
-            | 'youtube';
-          next[platform] = {
-            connected: true,
-            accountId: connection.account_id || undefined,
-            username: connection.username || platform,
-          };
-        });
-        setSocialConnections(next);
-        window.localStorage.setItem('biolink-social-connections', JSON.stringify(next));
-      });
-  }, [userId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -862,51 +806,71 @@ export default function BioLinkApp() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSocialConnect = async (
-    platform: 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube'
-  ) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('social-oauth-start', {
-        body: {
-          platform,
-          returnUrl: `${window.location.origin}${window.location.pathname}`,
-        },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.location.assign(data.url);
-        return;
-      }
-      throw new Error('OAuth URL tidak diterima dari server.');
-    } catch (error) {
-      console.error(error);
-      showToast('OAuth belum dikonfigurasi atau Supabase Function belum dipasang.');
+  const handleDownloadBusinessCardQr = () => {
+    const svg = document.querySelector<SVGSVGElement>('#business-card-qr svg');
+    if (!svg) {
+      showToast('QR code belum siap');
       return;
     }
+
+    const serialized = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(blob);
+    const image = new Image();
+
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const padding = 80;
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      context.fillStyle = '#FFFFFF';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, padding, padding, canvas.width - padding * 2, canvas.height - padding * 2);
+      URL.revokeObjectURL(svgUrl);
+
+      canvas.toBlob((pngBlob) => {
+        if (!pngBlob) return;
+        const pngUrl = URL.createObjectURL(pngBlob);
+        const anchor = document.createElement('a');
+        anchor.href = pngUrl;
+        anchor.download = `${data.username || 'linktree'}-business-card-qr.png`;
+        anchor.click();
+        URL.revokeObjectURL(pngUrl);
+        showToast('QR code berhasil diunduh');
+      }, 'image/png');
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      showToast('QR code gagal diunduh');
+    };
+    image.src = svgUrl;
   };
 
-  const handleSocialDisconnect = async (
-    platform: 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube'
-  ) => {
-    if (userId) {
-      await supabase
-        .from('social_connections')
-        .delete()
-        .eq('user_id', userId)
-        .eq('platform', platform);
-    }
-    setSocialConnections((previous) => {
-      const next = { ...previous };
-      delete next[platform];
-      window.localStorage.setItem('biolink-social-connections', JSON.stringify(next));
-      return next;
-    });
-    if (mediaKitPrimary === platform) {
-      setMediaKitPrimary('');
-      window.localStorage.removeItem('biolink-media-primary');
-    }
-    showToast('Akun social media terputus');
+  const handleDownloadVCard = () => {
+    const vCard = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${businessCardName || data.displayName}`,
+      `ORG:${data.displayName}`,
+      contactPhone ? `TEL;TYPE=CELL:${contactPhone}` : '',
+      contactEmail ? `EMAIL:${contactEmail}` : '',
+      `URL:${getPublicProfileUrl(data.username)}`,
+      'END:VCARD',
+    ].filter(Boolean).join('\r\n');
+
+    const url = URL.createObjectURL(new Blob([vCard], { type: 'text/vcard;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${data.username || 'contact'}.vcf`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    showToast('Contact card berhasil diunduh');
   };
+
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1729,7 +1693,6 @@ export default function BioLinkApp() {
 
     const sidebarItems = [
       { label: 'My Linktree', icon: LayoutGrid, section: 'overview' as DashboardSection },
-      { label: 'Media kit', icon: Link2, section: 'media-kit' as DashboardSection },
       { label: 'Messaging', icon: MessageCircle, section: 'messaging' as DashboardSection },
       { label: 'Audience', icon: Users, section: 'audience' as DashboardSection },
       { label: 'Insights', icon: BarChart3, section: 'insights' as DashboardSection },
@@ -1908,7 +1871,6 @@ export default function BioLinkApp() {
                     <h1 className="text-[23px] font-bold tracking-tight">
                       {({
                         'overview': 'Dashboard',
-                        'media-kit': 'Media kit',
                         messaging: 'Messaging',
                         audience: 'Audience',
                         insights: 'Insights',
@@ -1981,158 +1943,6 @@ export default function BioLinkApp() {
                   </Card>
                 )}
 
-                {dashboardSection === 'media-kit' && (
-                  mediaKitStep === 1 ? (
-                    <div className="mx-auto max-w-[620px] py-10">
-                      <p className="mb-2 text-xs font-medium text-slate-500">Step 1 of 2</p>
-                      <h2 className="text-3xl font-bold tracking-tight">Connect your social accounts</h2>
-                      <p className="mt-2 text-sm text-slate-500">
-                        Securely connect your social accounts to show real profile and performance metrics.
-                      </p>
-
-                      <div className="mt-8 space-y-3">
-                        {[
-                          { id: 'instagram' as const, name: 'Instagram', icon: Instagram, tone: 'text-pink-600', bg: 'bg-pink-50' },
-                          { id: 'tiktok' as const, name: 'TikTok', icon: Music2, tone: 'text-slate-950', bg: 'bg-slate-100' },
-                          { id: 'tiktok-business' as const, name: 'TikTok Business', icon: Music2, tone: 'text-slate-950', bg: 'bg-slate-100', note: 'Required for audience demographics' },
-                          { id: 'youtube' as const, name: 'YouTube', icon: Youtube, tone: 'text-red-600', bg: 'bg-red-50' },
-                        ].map((platform) => {
-                          const Icon = platform.icon;
-                          const connection = socialConnections[platform.id];
-                          return (
-                            <div key={platform.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,.02)]">
-                              <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${platform.bg} ${platform.tone}`}>
-                                <Icon className="size-5" />
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold">Connect your {platform.name}</p>
-                                {platform.note && <p className="mt-0.5 text-xs text-slate-400">{platform.note}</p>}
-                                {connection?.connected && (
-                                  <p className="mt-0.5 truncate text-xs text-emerald-600">@{connection.username}</p>
-                                )}
-                              </div>
-                              {connection?.connected ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleSocialDisconnect(platform.id)}
-                                  className="rounded-full"
-                                >
-                                  Disconnect
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onClick={() => handleSocialConnect(platform.id)}
-                                  className="rounded-full bg-slate-950 px-4 text-xs hover:bg-slate-800"
-                                >
-                                  Connect
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="mt-7">
-                        <label className="text-sm font-semibold text-slate-600">Choose your primary social account</label>
-                        <p className="mt-1 text-xs text-slate-400">
-                          Your primary social account will be shown first anytime we share your metrics.
-                        </p>
-                        <select
-                          value={mediaKitPrimary}
-                          onChange={(e) => {
-                            setMediaKitPrimary(e.target.value);
-                            window.localStorage.setItem('biolink-media-primary', e.target.value);
-                          }}
-                          className="mt-4 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-violet-400"
-                        >
-                          <option value="">Connect a platform first</option>
-                          {Object.entries(socialConnections).map(([id, connection]) =>
-                            connection?.connected ? (
-                              <option key={id} value={id}>
-                                {id === 'tiktok-business' ? 'TikTok Business' : id === 'youtube' ? 'YouTube' : id === 'tiktok' ? 'TikTok' : 'Instagram'} - @{connection.username}
-                              </option>
-                            ) : null
-                          )}
-                        </select>
-                      </div>
-
-                      <div className="mt-8 flex items-center justify-between">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setDashboardSection('overview')}
-                          className="rounded-full"
-                        >
-                          Back
-                        </Button>
-                        <Button
-                          type="button"
-                          disabled={!Object.values(socialConnections).some((connection) => connection?.connected)}
-                          onClick={() => setMediaKitStep(2)}
-                          className="rounded-full bg-slate-950 px-7 text-xs hover:bg-slate-800"
-                        >
-                          Continue
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <Card className="rounded-[18px] border-slate-200 shadow-none">
-                          <CardContent className="p-5">
-                            <img src={data.avatarUrl} alt="" className="mb-4 size-20 rounded-full object-cover" />
-                            <h2 className="font-bold">{data.displayName}</h2>
-                            <p className="mt-1 text-sm text-slate-500">{data.bio}</p>
-                            {mediaKitPrimary && socialConnections[mediaKitPrimary as keyof typeof socialConnections]?.username && (
-                              <p className="mt-3 text-xs font-semibold text-violet-600">
-                                @{socialConnections[mediaKitPrimary as keyof typeof socialConnections]?.username}
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                        <Card className="rounded-[18px] border-slate-200 shadow-none">
-                          <CardContent className="space-y-3 p-5">
-                            <p className="text-xs font-semibold text-slate-500">Connected accounts</p>
-                            {Object.entries(socialConnections).map(([id, connection]) =>
-                              connection?.connected ? (
-                                <div key={id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
-                                  <span className="text-sm font-semibold">@{connection.username}</span>
-                                  <span className="text-[11px] text-emerald-600">Connected</span>
-                                </div>
-                              ) : null
-                            )}
-                            <p className="pt-2 text-xs text-slate-500">Total Linktree clicks</p>
-                            <p className="text-3xl font-bold">{totalClicks}</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => setMediaKitStep(1)} className="rounded-full">Back</Button>
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            const content = `${data.displayName}\n${data.bio}\n${getPublicProfileUrl(data.username)}\nPrimary account: ${mediaKitPrimary}\nTotal link clicks: ${totalClicks}`;
-                            const url = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
-                            const anchor = document.createElement('a');
-                            anchor.href = url;
-                            anchor.download = `${data.username}-media-kit.txt`;
-                            anchor.click();
-                            URL.revokeObjectURL(url);
-                            showToast('Media kit downloaded');
-                          }}
-                          className="rounded-full bg-violet-600 hover:bg-violet-700"
-                        >
-                          Download media kit
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                )}
-
                 {dashboardSection === 'messaging' && (
                   <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><label className="mb-2 block text-sm font-semibold">Announcement</label><textarea value={draftMessage} onChange={(e) => setDraftMessage(e.target.value)} placeholder="Write a message to your audience..." className="min-h-32 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm" /><Button type="button" onClick={() => { if (!draftMessage.trim()) return showToast('Tuliskan pesan terlebih dahulu'); showToast('Pesan berhasil disimpan'); }} className="mt-3 rounded-full bg-violet-600 hover:bg-violet-700">Save draft</Button></CardContent></Card>
                 )}
@@ -2149,7 +1959,173 @@ export default function BioLinkApp() {
                 )}
 
                 {dashboardSection === 'business-cards' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><div className="mx-auto max-w-md rounded-2xl bg-slate-900 p-7 text-white"><img src={data.avatarUrl} alt="" className="size-16 rounded-full object-cover" /><p className="mt-5 text-xl font-bold">{data.displayName}</p><p className="mt-1 text-sm text-slate-300">{data.bio}</p><p className="mt-5 text-xs text-sky-300">linktree/{data.username}</p></div><Button type="button" onClick={() => window.print()} className="mt-4 rounded-full bg-violet-600 hover:bg-violet-700">Print business card</Button></CardContent></Card>
+                  <div className="space-y-4">
+                    {showBusinessCardIntro && (
+                      <div className="relative rounded-[18px] border border-slate-200 bg-white px-5 py-5">
+                        <button
+                          type="button"
+                          onClick={() => setShowBusinessCardIntro(false)}
+                          className="absolute right-4 top-4 rounded-full p-1 text-slate-400 hover:bg-slate-100"
+                          aria-label="Close"
+                        >
+                          <X className="size-4" />
+                        </button>
+                        <h2 className="pr-8 text-center text-sm font-bold">
+                          Create a digital business card for your Google or Apple Wallet
+                        </h2>
+                        <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+                          {[
+                            ['QR', 'Let people scan the QR code for a shortcut to your Linktree'],
+                            ['Share', 'They can share your card with a shortcut'],
+                            ['Save', 'New contacts appear in your Audience Manager'],
+                          ].map(([icon, text]) => (
+                            <div key={icon} className="px-2">
+                              <div className="mx-auto mb-2 grid size-8 place-items-center rounded-lg border border-slate-200">
+                                {icon === 'QR' ? <QrCode className="size-4" /> : icon === 'Share' ? <Share2 className="size-4" /> : <Users className="size-4" />}
+                              </div>
+                              <p className="text-[11px] leading-4 text-slate-600">{text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid gap-4 lg:grid-cols-[210px_minmax(0,1fr)]">
+                      <Card className="h-fit overflow-hidden rounded-[18px] border-slate-200 shadow-none">
+                        <CardContent
+                          className="flex min-h-[290px] flex-col p-5"
+                          style={{ backgroundColor: businessCardColor }}
+                        >
+                          <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">Name</div>
+                          <p className="mt-1 truncate text-[13px] font-bold text-slate-950">
+                            {businessCardName || data.displayName}
+                          </p>
+                          <div className="mt-4 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">URL</div>
+                          <p className="mt-1 truncate text-[11px] font-semibold text-slate-700">
+                            linktree/{data.username}
+                          </p>
+                          <div className="mt-auto rounded-lg bg-white p-2.5 shadow-sm">
+                            <div id="business-card-qr" className="mx-auto flex h-[118px] w-[118px] items-center justify-center rounded bg-white">
+                              <QRCodeSVG
+                                value={getPublicProfileUrl(data.username)}
+                                size={118}
+                                level="M"
+                                bgColor="#FFFFFF"
+                                fgColor="#101828"
+                                marginSize={1}
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="rounded-[18px] border-slate-200 shadow-none">
+                        <CardContent className="space-y-5 p-5">
+                          <div>
+                            <h3 className="text-sm font-bold">Card style</h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Set your display name, background color and QR destination.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Display name</label>
+                            <input
+                              value={businessCardName}
+                              maxLength={30}
+                              onChange={(e) => setBusinessCardName(e.target.value)}
+                              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-violet-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-xs font-semibold text-slate-700">Background color</label>
+                            <div className="flex flex-wrap gap-2">
+                              {['#B8F34A', '#F28D2F', '#FF6B65', '#D95B5B', '#2487E8', '#6DBB67', '#1F2937', '#C66DAD'].map((color) => (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  onClick={() => setBusinessCardColor(color)}
+                                  style={{ backgroundColor: color }}
+                                  className={`size-8 rounded-full border-2 border-white shadow-sm ${
+                                    businessCardColor === color ? 'ring-2 ring-slate-800 ring-offset-2' : ''
+                                  }`}
+                                  aria-label={`Use ${color}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" onClick={handleDownloadBusinessCardQr} className="rounded-full bg-slate-950 px-5 text-xs hover:bg-slate-800">
+                              <Download className="size-4" /> Download QR
+                            </Button>
+                            {saveContactEnabled && (
+                              <Button type="button" variant="outline" onClick={handleDownloadVCard} className="rounded-full px-5 text-xs">
+                                <Phone className="size-4" /> Download contact
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardContent className="flex items-center justify-between gap-4 p-5">
+                        <div>
+                          <p className="text-sm font-semibold">Let visitors share their details back</p>
+                          <p className="mt-1 text-xs text-slate-500">Collect a name and email from people who follow your Linktree.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShareDetailsBack((value) => !value)}
+                          className={`h-6 w-11 shrink-0 rounded-full p-0.5 ${shareDetailsBack ? 'bg-violet-600' : 'bg-slate-200'}`}
+                        >
+                          <span className={`block size-5 rounded-full bg-white transition-transform ${shareDetailsBack ? 'translate-x-5' : ''}`} />
+                        </button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardContent className="p-5">
+                        <button type="button" onClick={() => setSaveContactEnabled((value) => !value)} className="flex w-full items-center justify-between text-left">
+                          <div>
+                            <p className="text-sm font-semibold">Let visitors save your contact</p>
+                            <p className="mt-1 text-xs text-slate-500">Enable a downloadable contact card from this business card.</p>
+                          </div>
+                          <span className="ml-4 flex shrink-0 items-center gap-2">
+                            {!showContactFields && <Plus className="size-4 text-slate-500" />}
+                            <span className={`h-6 w-11 rounded-full p-0.5 ${saveContactEnabled ? 'bg-violet-600' : 'bg-slate-200'}`}>
+                              <span className={`block size-5 rounded-full bg-white transition-transform ${saveContactEnabled ? 'translate-x-5' : ''}`} />
+                            </span>
+                          </span>
+                        </button>
+
+                        {saveContactEnabled && (
+                          <button
+                            type="button"
+                            onClick={() => setShowContactFields((value) => !value)}
+                            className="mt-3 text-xs font-semibold text-violet-600"
+                          >
+                            {showContactFields ? 'Hide contact details' : 'Edit contact details'}
+                          </button>
+                        )}
+
+                        {saveContactEnabled && showContactFields && (
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold">Phone</label>
+                              <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+62..." className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-semibold">Email</label>
+                              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="name@example.com" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
 
                 {dashboardSection === 'social-planner' && (
