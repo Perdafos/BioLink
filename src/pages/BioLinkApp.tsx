@@ -31,10 +31,21 @@ import {
   MessageCircle,
   Music2,
   Loader2,
+  Bell,
+  ChevronRight,
+  BarChart3,
+  Users,
+  Settings,
+  Sparkles,
+  Building2,
+  CalendarDays,
+  PanelLeft,
 } from 'lucide-react';
 import { BrandMark } from '../components/atoms/BrandMark';
 import { ToastNotification } from '../components/molecules/ToastNotification';
 import { AuthTemplate } from '../components/templates/AuthTemplate';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 
 // --- TYPES & INTERFACES ---
 
@@ -216,7 +227,7 @@ const LivePhoneMockup: React.FC<{
       }}
       className={`relative overflow-hidden transition-all duration-300 select-none ${fontClass} ${
         compact
-          ? 'w-[270px] h-[520px] rounded-[38px] border-[7px] border-neutral-900 shadow-xl'
+          ? 'w-[230px] h-[440px] rounded-[34px] border-[6px] border-neutral-900 shadow-xl'
           : 'w-[325px] sm:w-[345px] min-h-[630px] max-h-[76vh] rounded-[40px] border border-slate-200/80 shadow-[0_12px_40px_rgba(15,23,42,0.08)]'
       }`}
     >
@@ -458,6 +469,7 @@ export default function BioLinkApp() {
 
   // Dashboard States
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('content');
+  const [dashboardView, setDashboardView] = useState<'overview' | 'editor'>('overview');
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
@@ -1377,9 +1389,9 @@ export default function BioLinkApp() {
           backgroundImage: 'radial-gradient(#CBD5E1 1.25px, transparent 1.25px)',
           backgroundSize: '20px 20px',
         }}
-        className="min-h-screen bg-white text-slate-900 flex flex-col justify-between overflow-hidden"
+        className="min-h-[100dvh] h-[100dvh] bg-white text-slate-900 flex flex-col justify-between overflow-hidden"
       >
-        <header className="px-6 py-5 flex items-center justify-between max-w-4xl w-full mx-auto">
+        <header className="px-6 py-3 flex shrink-0 items-center justify-between max-w-4xl w-full mx-auto">
           <button
             type="button"
             onClick={() => setStep('step-profile')}
@@ -1396,12 +1408,12 @@ export default function BioLinkApp() {
           <BrandMark />
         </header>
 
-        <div className="flex-1 flex items-center justify-center px-4 py-2">
+        <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-1">
           <LivePhoneMockup data={data} compact skeletonMode />
         </div>
 
-        <div className="bg-white border-t border-slate-200 rounded-t-[32px] shadow-[0_-8px_30px_rgba(15,23,42,0.06)] px-6 pt-6 pb-8">
-          <div className="max-w-md mx-auto space-y-5">
+        <div className="shrink-0 bg-white border-t border-slate-200 rounded-t-[32px] shadow-[0_-8px_30px_rgba(15,23,42,0.06)] px-6 pt-4 pb-4">
+          <div className="max-w-md mx-auto space-y-3">
             <div className="text-center">
               <h2 className="text-lg font-bold text-slate-900">Let&apos;s apply some color</h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -1435,7 +1447,7 @@ export default function BioLinkApp() {
             </div>
 
             {colorOnboardingTab === 'wallpaper' ? (
-              <div className="grid grid-cols-5 gap-3 justify-items-center py-1">
+              <div className="grid grid-cols-5 gap-2 justify-items-center py-0">
                 {WALLPAPER_SWATCHES.map((swatch) => {
                   const isSelected = data.wallpaperColor.toUpperCase() === swatch.hex;
                   return (
@@ -1445,7 +1457,7 @@ export default function BioLinkApp() {
                       onClick={() => setData({ ...data, wallpaperColor: swatch.hex })}
                       title={swatch.name}
                       style={{ backgroundColor: swatch.hex }}
-                      className={`w-11 h-11 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
+                      className={`w-9 h-9 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
                         isSelected
                           ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
                           : 'border-slate-300 hover:scale-105'
@@ -1463,7 +1475,7 @@ export default function BioLinkApp() {
                 })}
                 <label
                   title="Warna Kustom"
-                  className="w-11 h-11 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-200 cursor-pointer relative overflow-hidden"
+                  className="w-9 h-9 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-200 cursor-pointer relative overflow-hidden"
                 >
                   <Palette className="w-4 h-4" />
                   <input
@@ -1491,7 +1503,7 @@ export default function BioLinkApp() {
                       }
                       title={swatch.name}
                       style={{ backgroundColor: swatch.bg }}
-                      className={`w-11 h-11 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
+                      className={`w-9 h-9 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
                         isSelected
                           ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
                           : 'border-slate-300 hover:scale-105'
@@ -1505,7 +1517,7 @@ export default function BioLinkApp() {
                 })}
                 <label
                   title="Warna Tombol Kustom"
-                  className="w-11 h-11 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-200 cursor-pointer relative overflow-hidden"
+                  className="w-9 h-9 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 hover:bg-slate-200 cursor-pointer relative overflow-hidden"
                 >
                   <Palette className="w-4 h-4" />
                   <input
@@ -1527,7 +1539,7 @@ export default function BioLinkApp() {
             <button
               type="button"
               onClick={() => setStep('transition')}
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm py-3.5 rounded-full transition-colors cursor-pointer"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm py-3 rounded-full transition-colors cursor-pointer"
             >
               Continue
             </button>
@@ -1570,15 +1582,298 @@ export default function BioLinkApp() {
   // ============================================================================
   // RENDER 6: DASHBOARD UTAMA
   // ============================================================================
+  if (dashboardView === 'overview') {
+    const activeLinks = data.links.filter((link) => link.active).length;
+    const totalClicks = data.links.reduce((total, link) => total + link.clicks, 0);
+
+    const sidebarItems = [
+      { label: 'My Linktree', icon: LayoutGrid, active: true },
+      { label: 'Earn', icon: Building2, chevron: true },
+      { label: 'Media kit', icon: Link2 },
+      { label: 'Messaging', icon: MessageCircle, chevron: true },
+      { label: 'Audience', icon: Users, chevron: true },
+      { label: 'Insights', icon: BarChart3 },
+    ];
+
+    const toolItems = [
+      { label: 'Business cards', icon: UserSquare2 },
+      { label: 'Social planner', icon: CalendarDays },
+      { label: 'Instagram auto-reply', icon: Instagram },
+      { label: 'Link shortener', icon: ExternalLink },
+    ];
+
+    return (
+      <div className="min-h-screen bg-[#f7f7f8] text-slate-950">
+        {toast && <ToastNotification message={toast} />}
+
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[238px] flex-col border-r border-slate-200/80 bg-white lg:flex">
+          <div className="flex h-[72px] items-center px-5">
+            <button
+              type="button"
+              onClick={() => setDashboardView('overview')}
+              className="flex min-w-0 items-center gap-2.5 rounded-xl text-left"
+            >
+              <div className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700">
+                <img
+                  src={data.avatarUrl}
+                  alt=""
+                  className="size-8 rounded-full object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold">
+                  {data.displayName}
+                </p>
+              </div>
+              <ChevronDown className="size-4 text-slate-400" />
+            </button>
+            <Bell className="ml-auto size-4 text-slate-500" />
+          </div>
+
+          <nav className="flex-1 px-3 py-2">
+            {sidebarItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    if (item.label === 'My Linktree') setDashboardView('overview');
+                    else showToast(`${item.label} akan segera tersedia`);
+                  }}
+                  className={`mb-0.5 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors ${
+                    item.active
+                      ? 'bg-violet-50 text-violet-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                  }`}
+                >
+                  <Icon className="size-4" strokeWidth={1.8} />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.chevron && <ChevronDown className="size-3.5 text-slate-400" />}
+                </button>
+              );
+            })}
+
+            <p className="mb-1 mt-5 px-3 text-[11px] font-medium text-slate-400">Tools</p>
+            {toolItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => showToast(`${item.label} akan segera tersedia`)}
+                  className="mb-0.5 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
+                >
+                  <Icon className="size-4" strokeWidth={1.8} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="m-3 mb-4 rounded-xl border border-slate-200 p-4">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="relative grid size-12 place-items-center">
+                <svg viewBox="0 0 44 44" className="absolute inset-0 size-12 -rotate-90">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="#ede9fe" strokeWidth="5" />
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="#8b5cf6" strokeWidth="5" strokeLinecap="round" strokeDasharray="56 113" />
+                </svg>
+                <span className="text-xs font-bold text-violet-600">50%</span>
+              </div>
+              <div>
+                <p className="text-xs font-semibold">Your setup checklist</p>
+                <p className="mt-1 text-[11px] text-slate-500">3 of 6 complete</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={() => setDashboardView('editor')}
+              className="h-9 w-full rounded-full bg-violet-600 text-xs font-semibold hover:bg-violet-700"
+            >
+              Finish setup
+            </Button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAccountMenu((prev) => !prev)}
+            className="mx-3 mb-3 flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Settings className="size-4" />
+            Settings
+          </button>
+        </aside>
+
+        <main className="lg:pl-[238px]">
+          <header className="sticky top-0 z-30 flex h-[72px] items-center border-b border-slate-200/70 bg-white/95 px-4 backdrop-blur lg:px-8">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="mr-2 lg:hidden"
+              onClick={() => setDashboardView('editor')}
+            >
+              <PanelLeft className="size-5" />
+            </Button>
+            <div className="hidden text-sm font-medium text-slate-500 sm:block">
+              Dashboard
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyShareUrl}
+                className="rounded-full border-slate-200 text-xs"
+              >
+                {copied ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
+                {copied ? 'Copied' : 'Share'}
+              </Button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="grid size-9 place-items-center rounded-full border border-slate-200 text-slate-500 lg:hidden"
+              >
+                <LogOut className="size-4" />
+              </button>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-[1120px] px-4 py-7 sm:px-8">
+            <div className="mb-8 flex items-center justify-between">
+              <h1 className="text-[23px] font-bold tracking-tight">
+                Good morning, {data.displayName}
+              </h1>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDashboardView('editor')}
+                  className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white sm:flex"
+                >
+                  <Sparkles className="size-4" />
+                  linktree/{data.username}
+                  <Share2 className="size-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <section>
+              <h2 className="mb-4 text-[15px] font-bold">Your Linktree</h2>
+              <Card className="inline-block w-[218px] overflow-hidden rounded-[17px] border-0 bg-[#4d6688] p-0 text-left text-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setDashboardView('editor')}
+                  className="w-full"
+                >
+                  <div
+                    className="relative h-[228px] overflow-hidden"
+                    style={{
+                      backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${data.avatarUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    <div className="absolute inset-x-0 bottom-3 px-3">
+                      <p className="truncate text-[14px] font-bold">{data.displayName}</p>
+                      <p className="mt-0.5 text-[11px] text-white/75">
+                        {activeLinks} {activeLinks === 1 ? 'link' : 'links'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex h-[50px] items-center justify-between px-3">
+                    <span className="min-w-0 truncate text-[13px] font-bold">
+                      {data.displayName}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="grid size-7 place-items-center rounded-full bg-white/15">
+                        <Share2 className="size-3.5" />
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
+                        Edit
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </Card>
+            </section>
+
+            <section className="mt-8">
+              <h2 className="mb-4 text-[15px] font-bold">In the last week</h2>
+              <div className="grid gap-4 md:grid-cols-[1fr_320px]">
+                <Card className="min-h-[230px] rounded-[18px] border-slate-200 shadow-none">
+                  <CardHeader className="flex-row items-center justify-between px-5 py-4">
+                    <CardTitle className="text-[13px]">Linktree visitors</CardTitle>
+                    <button
+                      type="button"
+                      onClick={() => showToast('Rentang waktu: 7 hari terakhir')}
+                      className="flex items-center gap-1 text-[11px] text-slate-500"
+                    >
+                      Last 7 days <ChevronRight className="size-3.5" />
+                    </button>
+                  </CardHeader>
+                  <CardContent className="px-5">
+                    {totalClicks === 0 ? (
+                      <p className="text-[12px] text-slate-500">No activity during this time</p>
+                    ) : (
+                      <div className="mt-5">
+                        <p className="text-3xl font-bold">{totalClicks}</p>
+                        <p className="mt-1 text-xs text-slate-500">Total link clicks</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="hidden min-h-[230px] overflow-hidden rounded-[18px] border-slate-200 shadow-none md:block">
+                  <CardHeader className="px-5 py-4">
+                    <CardTitle className="text-[13px]">Audience growth</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-5">
+                    <svg viewBox="0 0 280 128" className="h-[128px] w-full">
+                      <line x1="0" y1="100" x2="280" y2="100" stroke="#f1f5f9" />
+                      <line x1="0" y1="60" x2="280" y2="60" stroke="#f1f5f9" />
+                      <line x1="0" y1="20" x2="280" y2="20" stroke="#f1f5f9" />
+                      <path d="M0 88 C35 82, 55 92, 80 78 S130 70, 155 60 S210 58, 280 32" fill="none" stroke="#ef5aa4" strokeWidth="2.5" />
+                      <path d="M0 105 C42 98, 72 88, 105 92 S160 82, 195 70 S245 58, 280 48" fill="none" stroke="#7c3aed" strokeWidth="2.5" />
+                      {[70, 105, 140, 175, 210, 245, 280].map((x, index) => (
+                        <circle key={x} cx={x} cy={[88, 82, 92, 78, 70, 60, 32][index]} r="2.5" fill="#ef5aa4" />
+                      ))}
+                    </svg>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setDashboardView('editor')}
+            className="fixed bottom-5 right-5 z-30 grid size-12 place-items-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-300/50"
+            title="Edit Linktree"
+          >
+            <Sparkles className="size-5" />
+          </button>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-slate-900 flex flex-col">
       {/* TOAST NOTIFICATION */}
       {toast && <ToastNotification message={toast} />}
 
       {/* TOP BAR */}
-      <header className="transparent-50 sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <header className="sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         {/* Left Hamburger / Stats */}
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setDashboardView('overview')}
+            className="grid size-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:text-violet-600"
+            title="Kembali ke Dashboard"
+          >
+            <PanelLeft className="size-4" />
+          </button>
           {syncStatus === 'saving' && (
             <span className="hidden md:inline-block text-[11px] text-slate-400">
               Menyimpan...
