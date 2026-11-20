@@ -768,13 +768,18 @@ export default function BioLinkApp() {
         }
 
         // Cek apakah username sudah dipakai
-        const { data: existingUser } = await supabase
-          .from('bio_profiles')
-          .select('username')
-          .eq('username', cleanUser)
-          .maybeSingle();
+        const { data: usernameAvailable, error: usernameCheckError } = await supabase.rpc(
+          'check_username_available',
+          { p_username: cleanUser }
+        );
 
-        if (existingUser) {
+        if (usernameCheckError) {
+          setAuthError(`Gagal memeriksa username: ${usernameCheckError.message}`);
+          setAuthSubmitting(false);
+          return;
+        }
+
+        if (!usernameAvailable) {
           setAuthError(`Username "@${cleanUser}" sudah digunakan. Coba username lain.`);
           setAuthSubmitting(false);
           return;

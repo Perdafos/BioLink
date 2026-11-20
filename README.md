@@ -230,3 +230,9 @@ Free to use for personal and commercial projects.
 ---
 
 Happy Coding!
+## Supabase setup
+
+If login succeeds but the app shows `permission denied for table bio_profiles`,
+run [`supabase/bio_profiles_policies.sql`](./supabase/bio_profiles_policies.sql)
+in the Supabase Dashboard SQL Editor. The script enables Row Level Security and
+allows authenticated users to access only their own profile.
