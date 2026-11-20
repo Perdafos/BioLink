@@ -492,6 +492,15 @@ export default function BioLinkApp() {
   const [autoReplyMessage, setAutoReplyMessage] = useState(
     'Terima kasih sudah menghubungi saya. Saya akan segera membalas pesan Anda.'
   );
+  const [mediaKitStep, setMediaKitStep] = useState<1 | 2>(1);
+  const [mediaKitPrimary, setMediaKitPrimary] = useState('');
+  const [socialConnections, setSocialConnections] = useState<
+    Partial<Record<'instagram' | 'tiktok' | 'tiktok-business' | 'youtube', {
+      connected: boolean;
+      username: string;
+      accountId?: string;
+    }>>
+  >({});
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
@@ -513,6 +522,64 @@ export default function BioLinkApp() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isHydratingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const savedConnections = window.localStorage.getItem('biolink-social-connections');
+      const savedPrimary = window.localStorage.getItem('biolink-media-primary');
+      if (savedConnections) setSocialConnections(JSON.parse(savedConnections));
+      if (savedPrimary) setMediaKitPrimary(savedPrimary);
+    } catch {
+      // Ignore invalid local connection data.
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const connectedPlatform = params.get('connected');
+    const connectedAccount = params.get('account');
+    if (connectedPlatform && connectedAccount) {
+      const platform = connectedPlatform as 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube';
+      setSocialConnections((previous) => {
+        const next = {
+          ...previous,
+          [platform]: { connected: true, username: connectedAccount },
+        };
+        window.localStorage.setItem('biolink-social-connections', JSON.stringify(next));
+        return next;
+      });
+      setDashboardSection('media-kit');
+      setMediaKitStep(2);
+      showToast(`${connectedAccount} berhasil terhubung`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    supabase
+      .from('social_connections')
+      .select('platform, account_id, username')
+      .eq('user_id', userId)
+      .then(({ data: connections, error }) => {
+        if (error || !connections) return;
+
+        const next: typeof socialConnections = {};
+        connections.forEach((connection) => {
+          const platform = connection.platform as
+            | 'instagram'
+            | 'tiktok'
+            | 'tiktok-business'
+            | 'youtube';
+          next[platform] = {
+            connected: true,
+            accountId: connection.account_id || undefined,
+            username: connection.username || platform,
+          };
+        });
+        setSocialConnections(next);
+        window.localStorage.setItem('biolink-social-connections', JSON.stringify(next));
+      });
+  }, [userId]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -787,6 +854,61 @@ export default function BioLinkApp() {
     setCopied(true);
     showToast(`Link disalin: ${shareLink}`);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSocialConnect = async (
+    platform: 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube'
+  ) => {
+    const customFunctionUrl = import.meta.env.VITE_SUPABASE_SOCIAL_OAUTH_URL;
+    if (customFunctionUrl) {
+      const url = new URL(customFunctionUrl);
+      url.searchParams.set('platform', platform);
+      url.searchParams.set('return_url', `${window.location.origin}${window.location.pathname}`);
+      window.location.assign(url.toString());
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('social-oauth-start', {
+        body: {
+          platform,
+          returnUrl: `${window.location.origin}${window.location.pathname}`,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      throw new Error('OAuth URL tidak diterima dari server.');
+    } catch (error) {
+      console.error(error);
+      showToast('OAuth belum dikonfigurasi atau Supabase Function belum dipasang.');
+      return;
+    }
+  };
+
+  const handleSocialDisconnect = async (
+    platform: 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube'
+  ) => {
+    if (userId) {
+      await supabase
+        .from('social_connections')
+        .delete()
+        .eq('user_id', userId)
+        .eq('platform', platform);
+    }
+    setSocialConnections((previous) => {
+      const next = { ...previous };
+      delete next[platform];
+      window.localStorage.setItem('biolink-social-connections', JSON.stringify(next));
+      return next;
+    });
+    if (mediaKitPrimary === platform) {
+      setMediaKitPrimary('');
+      window.localStorage.removeItem('biolink-media-primary');
+    }
+    showToast('Akun social media terputus');
   };
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1863,10 +1985,155 @@ export default function BioLinkApp() {
                 )}
 
                 {dashboardSection === 'media-kit' && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><img src={data.avatarUrl} alt="" className="mb-4 size-20 rounded-full object-cover" /><h2 className="font-bold">{data.displayName}</h2><p className="mt-1 text-sm text-slate-500">{data.bio}</p></CardContent></Card>
-                    <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="space-y-3 p-5"><p className="text-xs font-semibold text-slate-500">Performance</p><p className="text-3xl font-bold">{totalClicks}</p><p className="text-sm text-slate-500">Total link clicks</p><Button type="button" variant="outline" onClick={() => { const content = `${data.displayName}\n${data.bio}\n${getPublicProfileUrl(data.username)}\nTotal link clicks: ${totalClicks}`; const url = URL.createObjectURL(new Blob([content], { type: 'text/plain' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${data.username}-media-kit.txt`; anchor.click(); URL.revokeObjectURL(url); showToast('Media kit downloaded'); }} className="rounded-full">Download media kit</Button></CardContent></Card>
-                  </div>
+                  mediaKitStep === 1 ? (
+                    <div className="mx-auto max-w-[620px] py-10">
+                      <p className="mb-2 text-xs font-medium text-slate-500">Step 1 of 2</p>
+                      <h2 className="text-3xl font-bold tracking-tight">Connect your social accounts</h2>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Securely connect your social accounts to show real profile and performance metrics.
+                      </p>
+
+                      <div className="mt-8 space-y-3">
+                        {[
+                          { id: 'instagram' as const, name: 'Instagram', icon: Instagram, tone: 'text-pink-600', bg: 'bg-pink-50' },
+                          { id: 'tiktok' as const, name: 'TikTok', icon: Music2, tone: 'text-slate-950', bg: 'bg-slate-100' },
+                          { id: 'tiktok-business' as const, name: 'TikTok Business', icon: Music2, tone: 'text-slate-950', bg: 'bg-slate-100', note: 'Required for audience demographics' },
+                          { id: 'youtube' as const, name: 'YouTube', icon: Youtube, tone: 'text-red-600', bg: 'bg-red-50' },
+                        ].map((platform) => {
+                          const Icon = platform.icon;
+                          const connection = socialConnections[platform.id];
+                          return (
+                            <div key={platform.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,.02)]">
+                              <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${platform.bg} ${platform.tone}`}>
+                                <Icon className="size-5" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold">Connect your {platform.name}</p>
+                                {platform.note && <p className="mt-0.5 text-xs text-slate-400">{platform.note}</p>}
+                                {connection?.connected && (
+                                  <p className="mt-0.5 truncate text-xs text-emerald-600">@{connection.username}</p>
+                                )}
+                              </div>
+                              {connection?.connected ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSocialDisconnect(platform.id)}
+                                  className="rounded-full"
+                                >
+                                  Disconnect
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleSocialConnect(platform.id)}
+                                  className="rounded-full bg-slate-950 px-4 text-xs hover:bg-slate-800"
+                                >
+                                  Connect
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-7">
+                        <label className="text-sm font-semibold text-slate-600">Choose your primary social account</label>
+                        <p className="mt-1 text-xs text-slate-400">
+                          Your primary social account will be shown first anytime we share your metrics.
+                        </p>
+                        <select
+                          value={mediaKitPrimary}
+                          onChange={(e) => {
+                            setMediaKitPrimary(e.target.value);
+                            window.localStorage.setItem('biolink-media-primary', e.target.value);
+                          }}
+                          className="mt-4 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-violet-400"
+                        >
+                          <option value="">Connect a platform first</option>
+                          {Object.entries(socialConnections).map(([id, connection]) =>
+                            connection?.connected ? (
+                              <option key={id} value={id}>
+                                {id === 'tiktok-business' ? 'TikTok Business' : id === 'youtube' ? 'YouTube' : id === 'tiktok' ? 'TikTok' : 'Instagram'} - @{connection.username}
+                              </option>
+                            ) : null
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="mt-8 flex items-center justify-between">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setDashboardSection('overview')}
+                          className="rounded-full"
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          type="button"
+                          disabled={!Object.values(socialConnections).some((connection) => connection?.connected)}
+                          onClick={() => setMediaKitStep(2)}
+                          className="rounded-full bg-slate-950 px-7 text-xs hover:bg-slate-800"
+                        >
+                          Continue
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <Card className="rounded-[18px] border-slate-200 shadow-none">
+                          <CardContent className="p-5">
+                            <img src={data.avatarUrl} alt="" className="mb-4 size-20 rounded-full object-cover" />
+                            <h2 className="font-bold">{data.displayName}</h2>
+                            <p className="mt-1 text-sm text-slate-500">{data.bio}</p>
+                            {mediaKitPrimary && socialConnections[mediaKitPrimary as keyof typeof socialConnections]?.username && (
+                              <p className="mt-3 text-xs font-semibold text-violet-600">
+                                @{socialConnections[mediaKitPrimary as keyof typeof socialConnections]?.username}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                        <Card className="rounded-[18px] border-slate-200 shadow-none">
+                          <CardContent className="space-y-3 p-5">
+                            <p className="text-xs font-semibold text-slate-500">Connected accounts</p>
+                            {Object.entries(socialConnections).map(([id, connection]) =>
+                              connection?.connected ? (
+                                <div key={id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+                                  <span className="text-sm font-semibold">@{connection.username}</span>
+                                  <span className="text-[11px] text-emerald-600">Connected</span>
+                                </div>
+                              ) : null
+                            )}
+                            <p className="pt-2 text-xs text-slate-500">Total Linktree clicks</p>
+                            <p className="text-3xl font-bold">{totalClicks}</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={() => setMediaKitStep(1)} className="rounded-full">Back</Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const content = `${data.displayName}\n${data.bio}\n${getPublicProfileUrl(data.username)}\nPrimary account: ${mediaKitPrimary}\nTotal link clicks: ${totalClicks}`;
+                            const url = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+                            const anchor = document.createElement('a');
+                            anchor.href = url;
+                            anchor.download = `${data.username}-media-kit.txt`;
+                            anchor.click();
+                            URL.revokeObjectURL(url);
+                            showToast('Media kit downloaded');
+                          }}
+                          className="rounded-full bg-violet-600 hover:bg-violet-700"
+                        >
+                          Download media kit
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {dashboardSection === 'messaging' && (
