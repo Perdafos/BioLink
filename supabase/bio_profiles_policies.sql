@@ -4,6 +4,9 @@
 
 alter table public.bio_profiles enable row level security;
 
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.bio_profiles to authenticated;
+
 drop policy if exists "Users can read their own bio profile" on public.bio_profiles;
 create policy "Users can read their own bio profile"
   on public.bio_profiles
@@ -50,3 +53,18 @@ $$;
 
 revoke all on function public.check_username_available(text) from public;
 grant execute on function public.check_username_available(text) to anon, authenticated;
+
+create or replace function public.get_public_profile(p_username text)
+returns setof public.bio_profiles
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from public.bio_profiles
+  where username = p_username
+  limit 1;
+$$;
+
+revoke all on function public.get_public_profile(text) from public;
+grant execute on function public.get_public_profile(text) to anon, authenticated;

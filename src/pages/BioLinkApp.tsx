@@ -112,6 +112,10 @@ const APP_URL = (
   isLocalHost ? window.location.origin : import.meta.env.VITE_APP_URL || window.location.origin
 ).replace(/\/$/, '');
 
+const PUBLIC_USERNAME = window.location.pathname === '/'
+  ? null
+  : decodeURIComponent(window.location.pathname).replace(/^\//, '').replace(/\/$/, '') || null;
+
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
   username: 'perdafos',
@@ -526,6 +530,10 @@ export default function BioLinkApp() {
   const [history, setHistory] = useState<BioPageState[]>([]);
   const [redoStack, setRedoStack] = useState<BioPageState[]>([]);
 
+  const [publicProfile, setPublicProfile] = useState<BioPageState | null>(null);
+  const [publicProfileLoading, setPublicProfileLoading] = useState(Boolean(PUBLIC_USERNAME));
+  const [publicProfileError, setPublicProfileError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isHydratingRef = useRef<boolean>(false);
 
@@ -535,6 +543,71 @@ export default function BioLinkApp() {
       setToast((prev) => (prev === msg ? null : prev));
     }, 2400);
   };
+
+  useEffect(() => {
+    if (!PUBLIC_USERNAME) return;
+
+    let mounted = true;
+
+    supabase.rpc('get_public_profile', { p_username: PUBLIC_USERNAME }).maybeSingle()
+      .then(({ data: profile, error }) => {
+        if (!mounted) return;
+
+        if (error) {
+          setPublicProfileError(error.message);
+          setPublicProfileLoading(false);
+          return;
+        }
+
+        if (!profile) {
+          setPublicProfileError('Halaman bio tidak ditemukan.');
+          setPublicProfileLoading(false);
+          return;
+        }
+
+        const publicProfileRow = profile as {
+          username: string;
+          display_name: string | null;
+          bio: string | null;
+          avatar_url: string | null;
+          banner_color: string | null;
+          header_layout: string | null;
+          title_color: string | null;
+          wallpaper_color: string | null;
+          button_color: string | null;
+          button_text_color: string | null;
+          button_variant: string | null;
+          font_family: string | null;
+          show_footer_badge: boolean | null;
+          socials: SocialChannels | null;
+          links: LinkItem[] | null;
+        };
+
+        setPublicProfile({
+          accountEmail: '',
+          username: publicProfileRow.username,
+          displayName: publicProfileRow.display_name || publicProfileRow.username,
+          bio: publicProfileRow.bio || '',
+          avatarUrl: publicProfileRow.avatar_url || INITIAL_STATE.avatarUrl,
+          bannerColor: publicProfileRow.banner_color || '#0EA5E9',
+          headerLayout: (publicProfileRow.header_layout as HeaderLayoutType) || 'classic',
+          titleColor: publicProfileRow.title_color || '#0F172A',
+          wallpaperColor: publicProfileRow.wallpaper_color || '#FFFFFF',
+          buttonColor: publicProfileRow.button_color || '#0EA5E9',
+          buttonTextColor: publicProfileRow.button_text_color || '#FFFFFF',
+          buttonVariant: (publicProfileRow.button_variant as ButtonVariant) || 'solid',
+          fontFamily: (publicProfileRow.font_family as FontChoice) || 'DM Sans',
+          showFooterBadge: publicProfileRow.show_footer_badge ?? true,
+          socials: publicProfileRow.socials || INITIAL_STATE.socials,
+          links: Array.isArray(publicProfileRow.links) ? publicProfileRow.links : [],
+        });
+        setPublicProfileLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Load atau inisialisasi profil dari tabel Supabase `bio_profiles`
   const loadUserProfile = async (
@@ -940,6 +1013,39 @@ export default function BioLinkApp() {
       links: prev.links.map((l) => (l.id === id ? { ...l, clicks: l.clicks + 1 } : l)),
     }));
   };
+
+  // ============================================================================
+  // RENDER 0A: PUBLIC BIO PAGE (/username)
+  // ============================================================================
+  if (PUBLIC_USERNAME) {
+    if (publicProfileLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-white">
+          <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+        </div>
+      );
+    }
+
+    if (publicProfileError || !publicProfile) {
+      return (
+        <div className="min-h-screen flex items-center justify-center px-6 text-center bg-white">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Halaman tidak ditemukan</h1>
+            <p className="text-sm text-slate-500 mt-2">{publicProfileError || 'Profil belum tersedia.'}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <main
+        style={{ backgroundColor: publicProfile.wallpaperColor }}
+        className="min-h-screen flex justify-center px-4 py-6"
+      >
+        <LivePhoneMockup data={publicProfile} />
+      </main>
+    );
+  }
 
   // ============================================================================
   // RENDER 0: SESSION LOADING SCREEN
@@ -1506,14 +1612,6 @@ export default function BioLinkApp() {
         <div className="my-auto py-4">
           <LivePhoneMockup data={data} compact skeletonMode tilted3D />
         </div>
-
-        <button
-          type="button"
-          onClick={() => setStep('dashboard')}
-          className="text-xs font-semibold px-5 py-2.5 rounded-full bg-sky-500 text-white hover:bg-sky-600 transition-colors cursor-pointer"
-        >
-          Masuk ke Dashboard Sekarang →
-        </button>
       </div>
     );
   }
