@@ -1780,9 +1780,7 @@ export default function BioLinkApp() {
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold">
-                  {data.displayName}
-                </p>
+
               </div>
               <ChevronDown className="size-4 text-slate-400" />
             </button>
@@ -2061,11 +2059,6 @@ export default function BioLinkApp() {
                           <p className="mt-1 truncate text-[13px] font-bold text-slate-950">
                             {businessCardName || data.displayName}
                           </p>
-                          {data.bio && (
-                            <p className="mt-1 line-clamp-2 text-[9px] leading-3 text-slate-700">
-                              {data.bio}
-                            </p>
-                          )}
                           {data.accountEmail && (
                             <p className="mt-1 truncate text-[9px] text-slate-700">
                               {data.accountEmail}
