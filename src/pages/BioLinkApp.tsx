@@ -509,6 +509,47 @@ export default function BioLinkApp() {
   useEffect(() => {
     setContactEmail((current) => current || data.accountEmail);
   }, [data.accountEmail]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('biolink-business-card');
+      if (!saved) return;
+      const settings = JSON.parse(saved) as {
+        name?: string;
+        color?: string;
+        shareDetailsBack?: boolean;
+        saveContactEnabled?: boolean;
+        phone?: string;
+        email?: string;
+      };
+      if (settings.name) setBusinessCardName(settings.name);
+      if (settings.color) setBusinessCardColor(settings.color);
+      if (typeof settings.shareDetailsBack === 'boolean') setShareDetailsBack(settings.shareDetailsBack);
+      if (typeof settings.saveContactEnabled === 'boolean') setSaveContactEnabled(settings.saveContactEnabled);
+      if (settings.phone) setContactPhone(settings.phone);
+      if (settings.email) setContactEmail(settings.email);
+    } catch {
+      // Ignore invalid saved business card settings.
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('biolink-business-card', JSON.stringify({
+      name: businessCardName,
+      color: businessCardColor,
+      shareDetailsBack,
+      saveContactEnabled,
+      phone: contactPhone,
+      email: contactEmail,
+    }));
+  }, [
+    businessCardName,
+    businessCardColor,
+    shareDetailsBack,
+    saveContactEnabled,
+    contactPhone,
+    contactEmail,
+  ]);
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
@@ -869,6 +910,27 @@ export default function BioLinkApp() {
     anchor.click();
     URL.revokeObjectURL(url);
     showToast('Contact card berhasil diunduh');
+  };
+
+  const handleShareBusinessCard = async () => {
+    const url = getPublicProfileUrl(data.username);
+    const title = businessCardName || data.displayName;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text: `Kartu digital ${title}`,
+          url,
+        });
+        showToast('Business card berhasil dibagikan');
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+
+    await handleCopyShareUrl();
   };
 
 
@@ -2004,7 +2066,13 @@ export default function BioLinkApp() {
                           <p className="mt-1 truncate text-[11px] font-semibold text-slate-700">
                             linktree/{data.username}
                           </p>
-                          <div className="mt-auto rounded-lg bg-white p-2.5 shadow-sm">
+                          <a
+                            href={getPublicProfileUrl(data.username)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open public Linktree"
+                            className="mt-auto rounded-lg bg-white p-2.5 shadow-sm"
+                          >
                             <div id="business-card-qr" className="mx-auto flex h-[118px] w-[118px] items-center justify-center rounded bg-white">
                               <QRCodeSVG
                                 value={getPublicProfileUrl(data.username)}
@@ -2015,7 +2083,7 @@ export default function BioLinkApp() {
                                 marginSize={1}
                               />
                             </div>
-                          </div>
+                          </a>
                         </CardContent>
                       </Card>
 
@@ -2059,6 +2127,17 @@ export default function BioLinkApp() {
                           <div className="flex flex-wrap gap-2">
                             <Button type="button" onClick={handleDownloadBusinessCardQr} className="rounded-full bg-slate-950 px-5 text-xs hover:bg-slate-800">
                               <Download className="size-4" /> Download QR
+                            </Button>
+                            <Button type="button" variant="outline" onClick={handleShareBusinessCard} className="rounded-full px-5 text-xs">
+                              <Share2 className="size-4" /> Share card
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => window.open(getPublicProfileUrl(data.username), '_blank', 'noopener,noreferrer')}
+                              className="rounded-full px-5 text-xs"
+                            >
+                              <ExternalLink className="size-4" /> Open link
                             </Button>
                             {saveContactEnabled && (
                               <Button type="button" variant="outline" onClick={handleDownloadVCard} className="rounded-full px-5 text-xs">
