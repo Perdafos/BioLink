@@ -107,6 +107,11 @@ const BUTTON_SWATCHES = [
   { name: 'Obsidian', bg: '#09090B', text: '#FFFFFF' },
 ];
 
+const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const APP_URL = (
+  isLocalHost ? window.location.origin : import.meta.env.VITE_APP_URL || window.location.origin
+).replace(/\/$/, '');
+
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
   username: 'perdafos',
@@ -727,7 +732,7 @@ export default function BioLinkApp() {
   };
 
   const handleCopyShareUrl = () => {
-    const shareLink = `${window.location.origin}/${data.username || 'perdafos'}`;
+    const shareLink = `${APP_URL}/${data.username || 'perdafos'}`;
     navigator.clipboard?.writeText(shareLink);
     setCopied(true);
     showToast(`Link disalin: ${shareLink}`);
@@ -778,6 +783,9 @@ export default function BioLinkApp() {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: loginEmail.trim(),
           password: loginPassword,
+          options: {
+            emailRedirectTo: APP_URL,
+          },
         });
 
         if (signUpError) {
@@ -830,7 +838,7 @@ export default function BioLinkApp() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: APP_URL,
       },
     });
 
@@ -2377,7 +2385,7 @@ export default function BioLinkApp() {
             </div>
 
             <div className="flex flex-col items-center">
-              <SolidQRCode url={`${window.location.origin}/${data.username}`} />
+              <SolidQRCode url={`${APP_URL}/${data.username}`} />
               <p className="font-bold text-sm text-slate-900 mt-3">{data.displayName}</p>
               <span className="text-xs font-medium text-sky-600 bg-sky-50 border border-sky-200 px-3 py-1 rounded-full mt-1">
                 biolink.id/{data.username}
