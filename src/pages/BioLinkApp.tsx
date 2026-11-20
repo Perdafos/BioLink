@@ -536,6 +536,12 @@ export default function BioLinkApp() {
     const params = new URLSearchParams(window.location.search);
     const connectedPlatform = params.get('connected');
     const connectedAccount = params.get('account');
+    const oauthError = params.get('oauth_error');
+    if (oauthError) {
+      setDashboardSection('media-kit');
+      showToast(`OAuth gagal: ${oauthError}`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
     if (connectedPlatform && connectedAccount) {
       const platform = connectedPlatform as 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube';
       setSocialConnections((previous) => {
@@ -859,15 +865,6 @@ export default function BioLinkApp() {
   const handleSocialConnect = async (
     platform: 'instagram' | 'tiktok' | 'tiktok-business' | 'youtube'
   ) => {
-    const customFunctionUrl = import.meta.env.VITE_SUPABASE_SOCIAL_OAUTH_URL;
-    if (customFunctionUrl) {
-      const url = new URL(customFunctionUrl);
-      url.searchParams.set('platform', platform);
-      url.searchParams.set('return_url', `${window.location.origin}${window.location.pathname}`);
-      window.location.assign(url.toString());
-      return;
-    }
-
     try {
       const { data, error } = await supabase.functions.invoke('social-oauth-start', {
         body: {
