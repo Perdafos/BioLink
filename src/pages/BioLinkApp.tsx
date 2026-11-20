@@ -456,7 +456,7 @@ const LivePhoneMockup: React.FC<{
             </div>
           )}
           <p style={{ color: subTextColor }} className="text-[10px] opacity-65">
-            Cookie Preferences • Report • Privacy
+            
           </p>
         </div>
       </div>
