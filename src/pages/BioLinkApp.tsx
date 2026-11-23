@@ -52,6 +52,7 @@ import { Button } from '../components/ui/button';
 
 type AppStep = 'login' | 'step-links' | 'step-profile' | 'step-color' | 'transition' | 'dashboard';
 type DashboardTab = 'content' | 'header' | 'design';
+type DesignPanel = 'menu' | 'theme' | 'wallpaper' | 'buttons' | 'text' | 'colors' | 'stickers' | 'footer';
 type DashboardSection =
   | 'overview'
   | 'messaging'
@@ -647,6 +648,7 @@ export default function BioLinkApp() {
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('content');
   const [dashboardView, setDashboardView] = useState<'overview' | 'editor'>('overview');
   const [dashboardSection, setDashboardSection] = useState<DashboardSection>('overview');
+  const [designPanel, setDesignPanel] = useState<DesignPanel>('menu');
   const [linkChartType, setLinkChartType] = useState<'horizontal' | 'vertical' | 'donut'>('horizontal');
   const [draftMessage, setDraftMessage] = useState('');
   const [audienceEmail, setAudienceEmail] = useState('');
@@ -3955,7 +3957,31 @@ export default function BioLinkApp() {
           {dashboardTab === 'design' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold tracking-tight text-slate-900">Design</h2>
+                <div className="flex items-center gap-2">
+                  {designPanel !== 'menu' && (
+                    <button
+                      type="button"
+                      onClick={() => setDesignPanel('menu')}
+                      className="grid size-8 place-items-center rounded-full text-slate-500 hover:bg-slate-100"
+                      title="Kembali"
+                    >
+                      <ArrowLeft className="size-4" />
+                    </button>
+                  )}
+                  <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                    {designPanel === 'menu'
+                      ? 'Design'
+                      : ({
+                          theme: 'Theme',
+                          wallpaper: 'Wallpaper',
+                          buttons: 'Buttons',
+                          text: 'Text',
+                          colors: 'Colors',
+                          stickers: 'Stickers',
+                          footer: 'Footer',
+                        } as Record<Exclude<DesignPanel, 'menu'>, string>)[designPanel]}
+                  </h2>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -3983,135 +4009,222 @@ export default function BioLinkApp() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <span className="text-xs font-semibold text-slate-500 block">Customize</span>
+              {designPanel === 'menu' && (
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => setDesignPanel('theme')}
+                    className="flex w-full items-center gap-3.5 rounded-2xl border border-slate-200 px-4 py-3.5 text-left transition-colors hover:border-slate-300"
+                  >
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-700 text-sm font-bold text-white">Aa</span>
+                    <span className="flex-1 text-sm font-semibold text-slate-800">Theme</span>
+                    <span className="text-xs text-slate-400">Custom</span>
+                    <ChevronRight className="size-4 text-slate-400" />
+                  </button>
 
-                <div className="border border-slate-200 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        style={{ backgroundColor: data.wallpaperColor }}
-                        className="w-10 h-10 rounded-xl border border-slate-300"
-                      />
-                      <div>
-                        <span className="text-sm font-semibold text-slate-900 block">
-                          Wallpaper
-                        </span>
-                        <span className="text-xs text-slate-400">Solid Fill</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-mono text-slate-500 uppercase">
-                      {data.wallpaperColor}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap pt-1">
-                    {WALLPAPER_SWATCHES.map((sw) => (
+                  <div className="space-y-2.5">
+                    <p className="text-xs font-semibold text-slate-500">Customize</p>
+                    {([
+                      ['wallpaper', 'Wallpaper', 'Solid Fill', '■'],
+                      ['buttons', 'Buttons', data.buttonVariant.charAt(0).toUpperCase() + data.buttonVariant.slice(1), '●'],
+                      ['text', 'Text', data.fontFamily, 'Aa'],
+                      ['colors', 'Colors', '', '▮'],
+                      ['stickers', 'Stickers', 'Decorate your page', '⌇'],
+                      ['footer', 'Footer', data.showFooterBadge ? 'Visible' : 'Hidden', '✣'],
+                    ] as [DesignPanel, string, string, string][]).map(([panel, label, detail, mark]) => (
                       <button
-                        key={sw.hex}
+                        key={panel}
                         type="button"
-                        onClick={() =>
-                          updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: sw.hex }))
-                        }
-                        style={{ backgroundColor: sw.hex }}
-                        title={sw.name}
-                        className={`w-7 h-7 rounded-full border cursor-pointer transition-transform ${
-                          data.wallpaperColor.toUpperCase() === sw.hex
-                            ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-400'
-                            : 'border-slate-300 hover:scale-105'
-                        }`}
+                        onClick={() => setDesignPanel(panel)}
+                        className="flex w-full items-center gap-3.5 rounded-2xl border border-slate-200 px-4 py-3.5 text-left transition-colors hover:border-slate-300"
+                      >
+                        <span
+                          className={`grid size-11 shrink-0 place-items-center rounded-xl border text-base ${
+                            panel === 'wallpaper'
+                              ? 'border-slate-300'
+                              : panel === 'buttons'
+                                ? 'border-slate-200'
+                                : 'border-slate-200 bg-slate-50 text-slate-700'
+                          }`}
+                          style={panel === 'wallpaper' ? { backgroundColor: data.wallpaperColor } : panel === 'buttons' ? { backgroundColor: data.buttonColor, color: data.buttonTextColor } : undefined}
+                        >
+                          {mark}
+                        </span>
+                        <span className="flex-1 text-sm font-semibold text-slate-800">{label}</span>
+                        {detail && <span className="text-xs text-slate-400">{detail}</span>}
+                        <ChevronRight className="size-4 text-slate-400" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {designPanel === 'theme' && (
+                <div className="space-y-4">
+                  <p className="text-xs leading-5 text-slate-500">
+                    Pilih preset tema untuk menerapkan kombinasi latar, tombol, dan tipografi sekaligus.
+                  </p>
+                  {[
+                    { name: 'Sky', wallpaper: '#F0F9FF', button: '#0EA5E9', text: '#0F172A', font: 'DM Sans' as FontChoice },
+                    { name: 'Midnight', wallpaper: '#0F172A', button: '#FFFFFF', text: '#FFFFFF', font: 'Inter' as FontChoice },
+                    { name: 'Blush', wallpaper: '#F5D5EA', button: '#18181B', text: '#0F172A', font: 'Plus Jakarta Sans' as FontChoice },
+                    { name: 'Espresso', wallpaper: '#433A31', button: '#F5DFC6', text: '#FFFFFF', font: 'DM Sans' as FontChoice },
+                  ].map((theme) => (
+                    <button
+                      key={theme.name}
+                      type="button"
+                      onClick={() =>
+                        updateDataWithHistory((prev) => ({
+                          ...prev,
+                          wallpaperColor: theme.wallpaper,
+                          buttonColor: theme.button,
+                          buttonTextColor: theme.text,
+                          titleColor: theme.text,
+                          fontFamily: theme.font,
+                        }))
+                      }
+                      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-sky-300"
+                    >
+                      <span className="h-14 w-20 rounded-xl border border-slate-200" style={{ backgroundColor: theme.wallpaper }} />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-800">{theme.name}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{theme.font}</p>
+                      </div>
+                      <ChevronRight className="size-4 text-slate-400" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {designPanel === 'wallpaper' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Fill</p>
+                      <p className="mt-1 text-xs text-slate-400">Warna latar halaman</p>
+                    </div>
+                    <label className="size-10 cursor-pointer rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ backgroundColor: data.wallpaperColor }}>
+                      <input
+                        type="color"
+                        value={data.wallpaperColor}
+                        onChange={(e) => updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: e.target.value }))}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-5 gap-3">
+                    {WALLPAPER_SWATCHES.map((swatch) => (
+                      <button
+                        key={swatch.hex}
+                        type="button"
+                        onClick={() => updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: swatch.hex }))}
+                        title={swatch.name}
+                        style={{ backgroundColor: swatch.hex }}
+                        className={`aspect-square rounded-2xl border ${data.wallpaperColor.toUpperCase() === swatch.hex ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400' : 'border-slate-300'}`}
                       />
                     ))}
                   </div>
                 </div>
+              )}
 
-                <div className="border border-slate-200 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        style={{ backgroundColor: data.buttonColor }}
-                        className="w-10 h-10 rounded-xl border border-slate-200"
-                      />
-                      <div>
-                        <span className="text-sm font-semibold text-slate-900 block">Buttons</span>
-                        <span className="text-xs text-slate-400 capitalize">
-                          {data.buttonVariant}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-full">
-                      {(['solid', 'outline', 'soft'] as ButtonVariant[]).map((v) => (
+              {designPanel === 'buttons' && (
+                <div className="space-y-5">
+                  <div>
+                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Style</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['solid', 'outline', 'soft'] as ButtonVariant[]).map((variant) => (
                         <button
-                          key={v}
+                          key={variant}
                           type="button"
-                          onClick={() =>
-                            updateDataWithHistory((prev) => ({ ...prev, buttonVariant: v }))
-                          }
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize cursor-pointer ${
-                            data.buttonVariant === v
-                              ? 'bg-white text-sky-600 shadow-2xs'
-                              : 'text-slate-600'
-                          }`}
+                          onClick={() => updateDataWithHistory((prev) => ({ ...prev, buttonVariant: variant }))}
+                          className={`rounded-full border py-2.5 text-xs font-semibold capitalize ${data.buttonVariant === variant ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-200 text-slate-600'}`}
                         >
-                          {v}
+                          {variant}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 flex-wrap pt-1">
-                    {BUTTON_SWATCHES.map((sw) => (
-                      <button
-                        key={sw.bg}
-                        type="button"
-                        onClick={() =>
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            buttonColor: sw.bg,
-                            buttonTextColor: sw.text,
-                          }))
-                        }
-                        style={{ backgroundColor: sw.bg }}
-                        title={sw.name}
-                        className={`w-7 h-7 rounded-full border cursor-pointer transition-transform ${
-                          data.buttonColor.toUpperCase() === sw.bg
-                            ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-400'
-                            : 'border-slate-300 hover:scale-105'
-                        }`}
-                      />
-                    ))}
+                  <div>
+                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Color</p>
+                    <div className="grid grid-cols-5 gap-3">
+                      {BUTTON_SWATCHES.map((swatch) => (
+                        <button
+                          key={swatch.bg}
+                          type="button"
+                          onClick={() => updateDataWithHistory((prev) => ({ ...prev, buttonColor: swatch.bg, buttonTextColor: swatch.text }))}
+                          title={swatch.name}
+                          style={{ backgroundColor: swatch.bg }}
+                          className={`aspect-square rounded-full border ${data.buttonColor.toUpperCase() === swatch.bg ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400' : 'border-slate-300'}`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-800 font-bold text-sm flex items-center justify-center">
-                      Aa
-                    </div>
-                    <div>
-                      <span className="text-sm font-semibold text-slate-900 block">Text</span>
-                      <span className="text-xs text-slate-400">Page Typography</span>
-                    </div>
+              {designPanel === 'text' && (
+                <div className="space-y-3">
+                  {(['DM Sans', 'Inter', 'Plus Jakarta Sans', 'JetBrains Mono'] as FontChoice[]).map((font) => (
+                    <button
+                      key={font}
+                      type="button"
+                      onClick={() => updateDataWithHistory((prev) => ({ ...prev, fontFamily: font }))}
+                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 ${data.fontFamily === font ? 'border-sky-500 bg-sky-50/40' : 'border-slate-200'}`}
+                    >
+                      <span className="text-sm font-semibold text-slate-800">{font}</span>
+                      {data.fontFamily === font && <Check className="size-4 text-sky-600" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {designPanel === 'colors' && (
+                <div className="space-y-4">
+                  {[
+                    ['Title', data.titleColor, (color: string) => updateDataWithHistory((prev) => ({ ...prev, titleColor: color }))],
+                    ['Wallpaper', data.wallpaperColor, (color: string) => updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: color }))],
+                    ['Button', data.buttonColor, (color: string) => updateDataWithHistory((prev) => ({ ...prev, buttonColor: color }))],
+                  ].map(([label, value, onChange]) => (
+                    <label key={String(label)} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                      <span className="text-sm font-semibold text-slate-800">{String(label)}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs font-mono uppercase text-slate-500">{String(value)}</span>
+                        <span className="size-9 rounded-full border border-slate-300" style={{ backgroundColor: String(value) }} />
+                        <input
+                          type="color"
+                          value={String(value)}
+                          onChange={(e) => (onChange as (color: string) => void)(e.target.value)}
+                          className="sr-only"
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {designPanel === 'stickers' && (
+                <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center">
+                  <Sparkles className="mx-auto size-7 text-sky-500" />
+                  <p className="mt-3 text-sm font-semibold text-slate-800">Sticker decoration</p>
+                  <p className="mt-1 text-xs text-slate-400">Stiker dekoratif akan ditambahkan pada pembaruan berikutnya.</p>
+                </div>
+              )}
+
+              {designPanel === 'footer' && (
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Footer badge</p>
+                    <p className="mt-1 text-xs text-slate-400">Tampilkan tombol Join di bagian bawah.</p>
                   </div>
-
-                  <select
-                    value={data.fontFamily}
-                    onChange={(e) =>
-                      updateDataWithHistory((prev) => ({
-                        ...prev,
-                        fontFamily: e.target.value as FontChoice,
-                      }))
-                    }
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-sky-500"
+                  <button
+                    type="button"
+                    onClick={() => updateDataWithHistory((prev) => ({ ...prev, showFooterBadge: !prev.showFooterBadge }))}
+                    className={`h-6 w-11 rounded-full p-0.5 ${data.showFooterBadge ? 'bg-sky-500' : 'bg-slate-200'}`}
                   >
-                    <option value="DM Sans">DM Sans</option>
-                    <option value="Inter">Inter</option>
-                    <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
-                    <option value="JetBrains Mono">JetBrains Mono</option>
-                  </select>
+                    <span className={`block size-5 rounded-full bg-white transition-transform ${data.showFooterBadge ? 'translate-x-5' : ''}`} />
+                  </button>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </section>
