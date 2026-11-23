@@ -181,9 +181,9 @@ const getPublicProfileUrl = (username: string) =>
 
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
-  username: 'perdafos',
-  displayName: 'Dafa Ghaitsa (Perdafos)',
-  bio: 'Full-Stack Web Developer & IoT Enthusiast. Membangun produk digital modern.',
+  username: 'john-doe',
+  displayName: 'John Doe',
+  bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
   avatarUrl:
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
   bannerColor: '#0EA5E9',
@@ -989,7 +989,7 @@ const LivePhoneMockup: React.FC<{
             {data.showFooterBadge && (
               <div className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-200 px-4 py-2 rounded-full text-[11px] font-semibold shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-sky-500" />
-                <span>Join {data.username || 'perdafos'} on BioLink</span>
+                <span>Join {data.username || 'john-doe'} on BioLink</span>
               </div>
             )}
           </div>
@@ -1507,7 +1507,7 @@ export default function BioLinkApp() {
   };
 
   const handleCopyShareUrl = () => {
-    const shareLink = getPublicProfileUrl(data.username || 'perdafos');
+    const shareLink = getPublicProfileUrl(data.username || 'john-doe');
     navigator.clipboard?.writeText(shareLink);
     setCopied(true);
     showToast(`Link disalin: ${shareLink}`);
@@ -2162,7 +2162,7 @@ export default function BioLinkApp() {
                     key: 'website',
                     label: 'Website',
                     icon: Globe,
-                    placeholder: 'https://perdafos.my.id',
+                    placeholder: 'https://example.com',
                   },
                   { key: 'email', label: 'Email', icon: Mail, placeholder: 'nama@email.com' },
                 ].map((soc) => {
@@ -2210,7 +2210,7 @@ export default function BioLinkApp() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="https://perdafos.my.id"
+                    placeholder="https://example.com"
                     value={quickUrl}
                     onChange={(e) => setQuickUrl(e.target.value)}
                     className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
@@ -2407,7 +2407,7 @@ export default function BioLinkApp() {
                   maxLength={30}
                   value={data.displayName}
                   onChange={(e) => setData({ ...data, displayName: e.target.value })}
-                  placeholder="Dafa Ghaitsa (Perdafos)"
+                  placeholder="John Doe"
                   className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                 />
               </div>
@@ -5421,7 +5421,7 @@ export default function BioLinkApp() {
                 <input
                   type="text"
                   required
-                  placeholder="https://perdafos.my.id"
+                  placeholder="https://example.com"
                   value={modalUrl}
                   onChange={(e) => setModalUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
