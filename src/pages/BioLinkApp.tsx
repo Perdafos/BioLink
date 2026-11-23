@@ -807,7 +807,9 @@ const LivePhoneMockup: React.FC<{
                     key={link.id}
                     style={buttonStyles}
                     className={`group relative w-full border overflow-hidden transition-transform duration-150 hover:scale-[1.015] active:scale-[0.99] ${
-                      getLinkPreviewUrl(link) ? 'rounded-2xl' : 'rounded-full'
+                      openPreviewLinkId === link.id && getLinkPreviewUrl(link)
+                        ? 'rounded-2xl'
+                        : 'rounded-full'
                     }`}
                   >
                     <div className="min-h-[48px] px-3.5 py-2.5 flex items-center">
