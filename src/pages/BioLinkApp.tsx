@@ -1312,17 +1312,24 @@ export default function BioLinkApp() {
       const profileRows = (ownedProfiles || []) as ProfileSummary[];
       setProfiles(profileRows);
 
-      const profile = profileRows.length
+      const savedProfileId = window.localStorage.getItem('biolink-active-profile-id');
+      const preferredProfileId =
+        profileRows.find((profile) => profile.id === savedProfileId)?.id ||
+        profileRows[0]?.id ||
+        null;
+
+      const profile = preferredProfileId
         ? await supabase
             .from('bio_profiles')
             .select('*')
-            .eq('id', profileRows[0].id)
+            .eq('id', preferredProfileId)
             .maybeSingle()
             .then(({ data: selectedProfile }) => selectedProfile)
         : null;
 
       if (profile) {
         setActiveProfileId(profile.id);
+        window.localStorage.setItem('biolink-active-profile-id', profile.id);
         setData({
           accountEmail: email,
           username: profile.username,
@@ -1394,6 +1401,7 @@ export default function BioLinkApp() {
         }
 
         setActiveProfileId(uid);
+        window.localStorage.setItem('biolink-active-profile-id', uid);
         setProfiles([{
           id: uid,
           username: newProfile.username,
@@ -1434,6 +1442,8 @@ export default function BioLinkApp() {
     }
 
     setActiveProfileId(profileId);
+    window.localStorage.setItem('biolink-active-profile-id', profileId);
+    window.localStorage.setItem('biolink-active-profile-id', profileId);
     setData({
       accountEmail: data.accountEmail,
       username: profile.username,
@@ -1590,6 +1600,8 @@ export default function BioLinkApp() {
     if (profileId === activeProfileId && remainingProfiles[0]) {
       setActiveProfileId(null);
       await switchProfile(remainingProfiles[0].id);
+    } else if (profileId === activeProfileId) {
+      window.localStorage.removeItem('biolink-active-profile-id');
     }
 
     showToast('Linktree berhasil dihapus');
@@ -5565,39 +5577,7 @@ export default function BioLinkApp() {
                     />
                   </div>
 
-                  {data.stickers.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-4 gap-2">
-                        {data.stickers.map((sticker, index) => (
-                          <div
-                            key={`${sticker.src}-${index}`}
-                            className="relative grid aspect-square place-items-center rounded-xl border border-slate-200 bg-slate-50 text-3xl"
-                          >
-                            {sticker.src.startsWith('data:image/') ? (
-                              <img src={sticker.src} alt="" className="size-10 object-contain" />
-                            ) : (
-                              <span>{sticker.src}</span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateDataWithHistory((prev) => ({
-                                  ...prev,
-                                  stickers: prev.stickers.filter(
-                                    (_, stickerIndex) => stickerIndex !== index
-                                  ),
-                                }))
-                              }
-                              className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-white text-slate-400 shadow"
-                              title="Hapus sticker"
-                            >
-                              <X className="size-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  
                 </div>
               )}
 
