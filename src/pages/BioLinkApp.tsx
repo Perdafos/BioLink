@@ -36,7 +36,6 @@ import {
   BarChart3,
   Users,
   Settings,
-  Sparkles,
   CalendarDays,
   PanelLeft,
   Download,
@@ -2532,6 +2531,14 @@ export default function BioLinkApp() {
             })}
           </nav>
 
+          {Math.round([
+            Boolean(data.avatarUrl),
+            Boolean(data.displayName),
+            Boolean(data.username),
+            Boolean(data.bio),
+            data.links.length > 0,
+            Object.values(data.socials).some(Boolean),
+          ].filter(Boolean).length / 6 * 100) < 100 && (
           <div className="m-3 mb-4 rounded-xl border border-slate-200 p-4">
             <div className="mb-3 flex items-center gap-3">
               <div className="relative grid size-12 place-items-center">
@@ -2572,6 +2579,7 @@ export default function BioLinkApp() {
               Finish setup
             </Button>
           </div>
+          )}
 
           <button
             type="button"
@@ -3331,7 +3339,6 @@ export default function BioLinkApp() {
                   onClick={() => setDashboardView('editor')}
                   className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white sm:flex"
                 >
-                  <Sparkles className="size-4" />
                   linktree/{data.username}
                   <Share2 className="size-3.5" />
                 </button>
@@ -3439,14 +3446,6 @@ export default function BioLinkApp() {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setDashboardView('editor')}
-            className="fixed bottom-5 right-5 z-30 grid size-12 place-items-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-300/50"
-            title="Edit Linktree"
-          >
-            <Sparkles className="size-5" />
-          </button>
         </main>
       </div>
     );
@@ -4573,11 +4572,11 @@ export default function BioLinkApp() {
 
         {/* RIGHT SIDE: LIVE PHONE PREVIEW */}
         <section
-          className={`flex-1 flex items-center justify-center py-4 lg:py-0 ${
+          className={`flex-1 flex items-center justify-center py-4 lg:sticky lg:top-[72px] lg:h-[calc(100vh-72px)] lg:py-4 ${
             mobileDashMode === 'editor' ? 'hidden lg:flex' : 'flex'
           }`}
         >
-          <div className="lg:sticky lg:top-20 flex items-center gap-3">
+          <div className="flex items-center justify-center gap-3">
             <LivePhoneMockup
               data={data}
               onLinkClick={handleIncrementClick}
