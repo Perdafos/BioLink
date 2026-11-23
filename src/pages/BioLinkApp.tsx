@@ -80,6 +80,13 @@ interface LinkItem {
   iconUrl?: string;
 }
 
+interface StickerItem {
+  src: string;
+  x: number;
+  y: number;
+  scale: number;
+}
+
 interface SocialChannels {
   instagram: string;
   tiktok: string;
@@ -111,7 +118,7 @@ interface BioPageState {
   noIndex: boolean;
   socials: SocialChannels;
   links: LinkItem[];
-  stickers: string[];
+  stickers: StickerItem[];
 }
 
 // --- SOLID COLOR PALETTES (ZERO GRADIENTS) ---
@@ -266,6 +273,34 @@ const getLinkPreviewUrl = (link: LinkItem) => {
   return null;
 };
 
+const normalizeStickers = (value: unknown): StickerItem[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          src: item,
+          x: index % 2 === 0 ? 12 : 82,
+          y: 14 + (index % 4) * 16,
+          scale: 1,
+        };
+      }
+      if (item && typeof item === 'object' && 'src' in item) {
+        const sticker = item as { src?: unknown; x?: unknown; y?: unknown; scale?: unknown };
+        if (typeof sticker.src !== 'string') return null;
+        return {
+          src: sticker.src,
+          x: typeof sticker.x === 'number' ? Math.max(4, Math.min(96, sticker.x)) : 50,
+          y: typeof sticker.y === 'number' ? Math.max(4, Math.min(96, sticker.y)) : 50,
+          scale: typeof sticker.scale === 'number' ? Math.max(0.6, Math.min(2, sticker.scale)) : 1,
+        };
+      }
+      return null;
+    })
+    .filter((item): item is StickerItem => item !== null)
+    .slice(0, 8);
+};
+
 // --- REUSABLE LIVE PHONE PREVIEW COMPONENT ---
 
 const LivePhoneMockup: React.FC<{
@@ -275,6 +310,8 @@ const LivePhoneMockup: React.FC<{
   tilted3D?: boolean;
   onLinkClick?: (id: string) => void;
   onShareLink?: (link: LinkItem) => void;
+  onStickerMove?: (index: number, x: number, y: number) => void;
+  stickersDraggable?: boolean;
 }> = ({
   data,
   compact = false,
@@ -282,6 +319,8 @@ const LivePhoneMockup: React.FC<{
   tilted3D = false,
   onLinkClick,
   onShareLink,
+  onStickerMove,
+  stickersDraggable = false,
 }) => {
   const lightBg = isColorLight(data.wallpaperColor);
   const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
@@ -319,17 +358,42 @@ const LivePhoneMockup: React.FC<{
       <div className="h-full overflow-y-auto flex flex-col justify-between pb-6">
         {data.stickers.map((sticker, index) => (
           <div
-            key={`${sticker}-${index}`}
-            className="pointer-events-none absolute z-20 grid size-12 place-items-center text-[32px] drop-shadow-md"
+            key={`${sticker.src}-${index}`}
+            onPointerDown={(event) => {
+              if (!stickersDraggable) return;
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!stickersDraggable || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+              const parent = event.currentTarget.parentElement?.getBoundingClientRect();
+              if (!parent) return;
+              const x = ((event.clientX - parent.left) / parent.width) * 100;
+              const y = ((event.clientY - parent.top) / parent.height) * 100;
+              onStickerMove?.(
+                index,
+                Math.max(4, Math.min(96, x)),
+                Math.max(4, Math.min(96, y))
+              );
+            }}
+            onPointerUp={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }
+            }}
+            className={`absolute z-20 grid size-12 place-items-center text-[32px] drop-shadow-md ${
+              stickersDraggable ? 'cursor-grab touch-none active:cursor-grabbing' : 'pointer-events-none'
+            }`}
             style={{
-              left: `${index % 2 === 0 ? 10 : 78}%`,
-              top: `${48 + (index % 4) * 96}px`,
+              left: `${sticker.x}%`,
+              top: `${sticker.y}%`,
+              transform: `translate(-50%, -50%) scale(${sticker.scale})`,
             }}
           >
-            {sticker.startsWith('data:image/') ? (
-              <img src={sticker} alt="" className="size-full object-contain" />
+            {sticker.src.startsWith('data:image/') ? (
+              <img src={sticker.src} alt="" className="size-full object-contain" />
             ) : (
-              <span>{sticker}</span>
+              <span>{sticker.src}</span>
             )}
           </div>
         ))}
@@ -844,7 +908,7 @@ export default function BioLinkApp() {
           no_index: boolean | null;
           socials: SocialChannels | null;
           links: LinkItem[] | null;
-          stickers: string[] | null;
+          stickers: unknown[] | null;
         };
 
         setPublicProfile({
@@ -869,7 +933,7 @@ export default function BioLinkApp() {
           noIndex: publicProfileRow.no_index ?? false,
           socials: { ...INITIAL_STATE.socials, ...(publicProfileRow.socials || {}) },
           links: Array.isArray(publicProfileRow.links) ? publicProfileRow.links : [],
-          stickers: Array.isArray(publicProfileRow.stickers) ? publicProfileRow.stickers : [],
+          stickers: normalizeStickers(publicProfileRow.stickers),
         });
         setPublicProfileLoading(false);
       });
@@ -950,7 +1014,7 @@ export default function BioLinkApp() {
           noIndex: profile.no_index ?? false,
           socials: { ...INITIAL_STATE.socials, ...(profile.socials || {}) },
           links: Array.isArray(profile.links) ? profile.links : [],
-          stickers: Array.isArray(profile.stickers) ? profile.stickers : [],
+          stickers: normalizeStickers(profile.stickers),
         });
         setStep(isNewAccount ? 'step-links' : 'dashboard');
       } else {
@@ -1248,7 +1312,15 @@ export default function BioLinkApp() {
       if (typeof reader.result !== 'string') return;
       updateDataWithHistory((prev) => ({
         ...prev,
-        stickers: [...prev.stickers, reader.result as string].slice(-8),
+        stickers: [
+          ...prev.stickers,
+          {
+            src: reader.result as string,
+            x: 82,
+            y: 54,
+            scale: 1,
+          },
+        ].slice(-8),
       }));
       showToast('Sticker ditambahkan');
     };
@@ -4295,11 +4367,19 @@ export default function BioLinkApp() {
                           onClick={() =>
                             updateDataWithHistory((prev) => ({
                               ...prev,
-                              stickers: [...prev.stickers, sticker].slice(-8),
+                              stickers: [
+                                ...prev.stickers,
+                                {
+                                  src: sticker,
+                                  x: 82,
+                                  y: 54 + prev.stickers.length * 5,
+                                  scale: 1,
+                                },
+                              ].slice(-8),
                             }))
                           }
                           className={`grid aspect-square place-items-center rounded-xl border text-2xl transition-transform hover:scale-105 ${
-                            data.stickers.includes(sticker)
+                            data.stickers.some((item) => item.src === sticker)
                               ? 'border-sky-500 bg-sky-50'
                               : 'border-slate-200'
                           } disabled:opacity-40`}
@@ -4330,13 +4410,14 @@ export default function BioLinkApp() {
                   </div>
 
                   {data.stickers.length > 0 && (
+                    <div className="space-y-2">
                     <div className="grid grid-cols-4 gap-2">
                       {data.stickers.map((sticker, index) => (
-                        <div key={`${sticker}-${index}`} className="relative grid aspect-square place-items-center rounded-xl border border-slate-200 bg-slate-50 text-3xl">
-                          {sticker.startsWith('data:image/') ? (
-                            <img src={sticker} alt="" className="size-10 object-contain" />
+                        <div key={`${sticker.src}-${index}`} className="relative grid aspect-square place-items-center rounded-xl border border-slate-200 bg-slate-50 text-3xl">
+                          {sticker.src.startsWith('data:image/') ? (
+                            <img src={sticker.src} alt="" className="size-10 object-contain" />
                           ) : (
-                            <span>{sticker}</span>
+                            <span>{sticker.src}</span>
                           )}
                           <button
                             type="button"
@@ -4353,6 +4434,34 @@ export default function BioLinkApp() {
                           </button>
                         </div>
                       ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {data.stickers.map((sticker, index) => (
+                        <label key={`scale-${sticker.src}-${index}`} className="rounded-xl border border-slate-200 px-3 py-2">
+                          <span className="mb-1.5 block text-[10px] font-semibold text-slate-500">
+                            Ukuran {index + 1}
+                          </span>
+                          <input
+                            type="range"
+                            min="0.6"
+                            max="2"
+                            step="0.1"
+                            value={sticker.scale}
+                            onChange={(e) =>
+                              updateDataWithHistory((prev) => ({
+                                ...prev,
+                                stickers: prev.stickers.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...item, scale: Number(e.target.value) }
+                                    : item
+                                ),
+                              }))
+                            }
+                            className="w-full accent-sky-500"
+                          />
+                        </label>
+                      ))}
+                    </div>
                     </div>
                   )}
                 </div>
@@ -4388,6 +4497,15 @@ export default function BioLinkApp() {
               data={data}
               onLinkClick={handleIncrementClick}
               onShareLink={setActiveShareLink}
+              stickersDraggable
+              onStickerMove={(index, x, y) =>
+                setData((prev) => ({
+                  ...prev,
+                  stickers: prev.stickers.map((sticker, stickerIndex) =>
+                    stickerIndex === index ? { ...sticker, x, y } : sticker
+                  ),
+                }))
+              }
             />
 
             <div className="hidden sm:flex flex-col gap-2 bg-white border border-slate-200 p-1.5 rounded-full shadow-2xs">
