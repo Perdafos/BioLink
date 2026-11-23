@@ -269,7 +269,13 @@ const getLinkIconUrl = (link: LinkItem) => {
 
 const getLinkPreviewUrl = (link: LinkItem) => {
   if (link.thumbnailUrl?.trim()) return link.thumbnailUrl.trim();
-  return null;
+  try {
+    const url = new URL(link.url);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    return `https://image.thum.io/get/width/600/crop/900/${encodeURIComponent(url.toString())}`;
+  } catch {
+    return null;
+  }
 };
 
 const normalizeStickers = (value: unknown): StickerItem[] => {
@@ -4682,11 +4688,11 @@ export default function BioLinkApp() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  URL Gambar Preview
+                  URL Gambar Preview <span className="font-normal text-slate-400">(opsional)</span>
                 </label>
                 <input
                   type="url"
-                  placeholder="https://.../preview.jpg"
+                  placeholder="Kosongkan untuk screenshot halaman otomatis"
                   value={modalThumbnailUrl}
                   onChange={(e) => setModalThumbnailUrl(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
