@@ -1410,7 +1410,7 @@ export default function BioLinkApp() {
     }
   };
 
-  const switchProfile = async (profileId: string) => {
+  const switchProfile = async (profileId: string, openEditor = false) => {
     if (!userId || profileId === activeProfileId) return;
 
     isHydratingRef.current = true;
@@ -1458,7 +1458,7 @@ export default function BioLinkApp() {
       links: Array.isArray(profile.links) ? profile.links : [],
       stickers: normalizeStickers(profile.stickers),
     });
-    setDashboardView('overview');
+    setDashboardView(openEditor ? 'editor' : 'overview');
     setDashboardSection('overview');
     setShowProfileMenu(false);
     setStep('dashboard');
@@ -1480,8 +1480,8 @@ export default function BioLinkApp() {
       ...INITIAL_STATE,
       accountEmail: data.accountEmail,
       username,
-      displayName: 'John Doe',
-      bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+      displayName: 'Untitled Linktree',
+      bio: '',
       links: [],
     };
 
@@ -1528,7 +1528,9 @@ export default function BioLinkApp() {
     setActiveProfileId(profileId);
     setData(newProfile);
     setShowProfileMenu(false);
-    setStep('step-links');
+    setDashboardView('editor');
+    setDashboardSection('overview');
+    setStep('dashboard');
   };
 
   // Cek sesi login saat halaman dimuat
@@ -4071,42 +4073,63 @@ export default function BioLinkApp() {
                 <section>
                   <h2 className="mb-4 text-[15px] font-bold">Your Linktree</h2>
                   <div className="flex flex-wrap items-center gap-4">
-                    <Card className="inline-block w-[218px] overflow-hidden rounded-[17px] border-0 bg-[#4d6688] p-0 text-left text-white shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => setDashboardView('editor')}
-                        className="w-full"
-                      >
-                        <div
-                          className="relative h-[228px] overflow-hidden"
-                          style={{
-                            backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${data.avatarUrl})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                          }}
+                    {profiles.map((profile) => {
+                      const isActive = profile.id === activeProfileId;
+                      const profileName =
+                        profile.display_name?.trim() || profile.username || 'Untitled Linktree';
+
+                      return (
+                        <Card
+                          key={profile.id}
+                          className={`inline-block w-[218px] overflow-hidden rounded-[17px] border-0 p-0 text-left text-white shadow-sm ${
+                            isActive ? 'bg-[#4d6688]' : 'bg-[#607784]'
+                          }`}
                         >
-                          <div className="absolute inset-x-0 bottom-3 px-3">
-                            <p className="truncate text-[14px] font-bold">{data.displayName}</p>
-                            <p className="mt-0.5 text-[11px] text-white/75">
-                              {activeLinks} {activeLinks === 1 ? 'link' : 'links'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex h-[50px] items-center justify-between px-3">
-                          <span className="min-w-0 truncate text-[13px] font-bold">
-                            {data.displayName}
-                          </span>
-                          <div className="flex shrink-0 items-center gap-1.5">
-                            <span className="grid size-7 place-items-center rounded-full bg-white/15">
-                              <Share2 className="size-3.5" />
-                            </span>
-                            <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
-                              Edit
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    </Card>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void (isActive
+                                ? setDashboardView('editor')
+                                : switchProfile(profile.id, true))
+                            }
+                            className="w-full"
+                          >
+                            <div
+                              className="relative h-[228px] overflow-hidden"
+                              style={{
+                                backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${
+                                  profile.avatar_url || INITIAL_STATE.avatarUrl
+                                })`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                              }}
+                            >
+                              <div className="absolute inset-x-0 bottom-3 px-3">
+                                <p className="truncate text-[14px] font-bold">{profileName}</p>
+                                <p className="mt-0.5 text-[11px] text-white/75">
+                                  {isActive
+                                    ? `${activeLinks} ${activeLinks === 1 ? 'link' : 'links'}`
+                                    : 'Linktree'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex h-[50px] items-center justify-between px-3">
+                              <span className="min-w-0 truncate text-[13px] font-bold">
+                                {profileName}
+                              </span>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <span className="grid size-7 place-items-center rounded-full bg-white/15">
+                                  <Share2 className="size-3.5" />
+                                </span>
+                                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
+                                  Edit
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        </Card>
+                      );
+                    })}
 
                     <button
                       type="button"

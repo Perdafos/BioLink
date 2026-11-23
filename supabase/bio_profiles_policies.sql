@@ -5,6 +5,9 @@ alter table public.bio_profiles enable row level security;
 
 -- bio_profiles.id is now the page ID, not a foreign key to auth.users.
 -- Remove the old one-profile-per-user constraint when it exists.
+alter table public.bio_profiles
+  drop constraint if exists bio_profiles_id_fkey;
+
 do $$
 declare
   constraint_record record;
@@ -50,7 +53,7 @@ begin
       foreign key (owner_id)
       references auth.users(id)
       on delete cascade;
-  end;
+  end if;
 end;
 $$;
 
