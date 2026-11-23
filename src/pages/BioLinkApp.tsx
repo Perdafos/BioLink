@@ -58,7 +58,6 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { BrandMark } from '../components/atoms/BrandMark';
-import { ToastNotification } from '../components/molecules/ToastNotification';
 import { AuthTemplate } from '../components/templates/AuthTemplate';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -1159,7 +1158,6 @@ export default function BioLinkApp() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [copied, setCopied] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
 
   // Undo/Redo history for dashboard edits
   const [history, setHistory] = useState<BioPageState[]>([]);
@@ -1197,12 +1195,7 @@ export default function BioLinkApp() {
     e.target.value = '';
   };
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => {
-      setToast((prev) => (prev === msg ? null : prev));
-    }, 2400);
-  };
+  const showToast = (_msg: string) => {};
 
   useEffect(() => {
     if (!data.username) return;
@@ -2946,8 +2939,6 @@ export default function BioLinkApp() {
 
     return (
       <div className="min-h-screen bg-[#f7f7f8] text-slate-950">
-        {toast && <ToastNotification message={toast} />}
-
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-[238px] flex-col border-r border-slate-200/80 bg-white lg:flex">
           <div className="flex h-[72px] items-center px-5">
             <div className="relative">
@@ -4364,8 +4355,6 @@ export default function BioLinkApp() {
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-slate-900 flex flex-col">
       {/* TOAST NOTIFICATION */}
-      {toast && <ToastNotification message={toast} />}
-
       {/* TOP BAR */}
       <header className="sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         {/* Left Hamburger / Stats */}
