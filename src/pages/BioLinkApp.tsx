@@ -84,6 +84,7 @@ interface SocialChannels {
   whatsapp: string;
   youtube: string;
   website: string;
+  email: string;
 }
 
 interface BioPageState {
@@ -174,6 +175,7 @@ const INITIAL_STATE: BioPageState = {
     whatsapp: '',
     youtube: '',
     website: '',
+    email: '',
   },
   links: [],
 };
@@ -364,7 +366,11 @@ const LivePhoneMockup: React.FC<{
             )}
             {data.socials.whatsapp && (
               <a
-                href={data.socials.whatsapp}
+                href={
+                  data.socials.whatsapp.startsWith('http')
+                    ? data.socials.whatsapp
+                    : `https://wa.me/${data.socials.whatsapp.replace(/[^0-9]/g, '')}`
+                }
                 target="_blank"
                 rel="noreferrer"
                 className="opacity-85 hover:opacity-100 transition-opacity"
@@ -390,6 +396,16 @@ const LivePhoneMockup: React.FC<{
                 className="opacity-85 hover:opacity-100 transition-opacity"
               >
                 <Globe className="w-4 h-4" />
+              </a>
+            )}
+            {data.socials.email && (
+              <a
+                href={data.socials.email.startsWith('mailto:')
+                  ? data.socials.email
+                  : `mailto:${data.socials.email}`}
+                className="opacity-85 hover:opacity-100 transition-opacity"
+              >
+                <Mail className="w-4 h-4" />
               </a>
             )}
           </div>
@@ -735,7 +751,7 @@ export default function BioLinkApp() {
           seoTitle: publicProfileRow.seo_title || '',
           seoDescription: publicProfileRow.seo_description || '',
           noIndex: publicProfileRow.no_index ?? false,
-          socials: publicProfileRow.socials || INITIAL_STATE.socials,
+          socials: { ...INITIAL_STATE.socials, ...(publicProfileRow.socials || {}) },
           links: Array.isArray(publicProfileRow.links) ? publicProfileRow.links : [],
         });
         setPublicProfileLoading(false);
@@ -813,7 +829,7 @@ export default function BioLinkApp() {
           seoTitle: profile.seo_title || '',
           seoDescription: profile.seo_description || '',
           noIndex: profile.no_index ?? false,
-          socials: profile.socials || INITIAL_STATE.socials,
+          socials: { ...INITIAL_STATE.socials, ...(profile.socials || {}) },
           links: Array.isArray(profile.links) ? profile.links : [],
         });
         setStep(isNewAccount ? 'step-links' : 'dashboard');
@@ -1557,6 +1573,7 @@ export default function BioLinkApp() {
                   { key: 'tiktok', label: 'TikTok', icon: Music2, placeholder: 'https://tiktok.com/@...' },
                   { key: 'youtube', label: 'YouTube', icon: Youtube, placeholder: 'https://youtube.com/@...' },
                   { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://perdafos.my.id' },
+                  { key: 'email', label: 'Email', icon: Mail, placeholder: 'nama@email.com' },
                 ].map((soc) => {
                   const Icon = soc.icon;
                   return (
@@ -3653,6 +3670,82 @@ export default function BioLinkApp() {
                   <div className="text-right text-[11px] text-slate-400 mt-1">
                     {data.bio.length}/160
                   </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">Social media</p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      Tambahkan akun atau tautan yang ditampilkan di bawah profil.
+                    </p>
+                  </div>
+                  {Object.values(data.socials).some((value) => Boolean(value?.trim())) && (
+                    <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-600">
+                      Aktif
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid gap-2.5">
+                  {([
+                    { key: 'instagram', label: 'Instagram', icon: Instagram, placeholder: 'https://instagram.com/username' },
+                    { key: 'tiktok', label: 'TikTok', icon: Music2, placeholder: 'https://tiktok.com/@username' },
+                    { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, placeholder: '628123456789' },
+                    { key: 'youtube', label: 'YouTube', icon: Youtube, placeholder: 'https://youtube.com/@channel' },
+                    { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://example.com' },
+                    { key: 'email', label: 'Email', icon: Mail, placeholder: 'nama@email.com' },
+                  ] as const).map((social) => {
+                    const Icon = social.icon;
+                    const socialKey = social.key as keyof SocialChannels;
+                    return (
+                      <div
+                        key={social.key}
+                        className="flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2.5 focus-within:border-sky-500"
+                      >
+                        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-500">
+                          <Icon className="size-4" />
+                        </span>
+                        <label className="w-20 shrink-0 text-xs font-semibold text-slate-700">
+                          {social.label}
+                        </label>
+                        <input
+                          type={social.key === 'email' ? 'email' : 'text'}
+                          value={data.socials[socialKey] || ''}
+                          onChange={(e) =>
+                            updateDataWithHistory((prev) => ({
+                              ...prev,
+                              socials: {
+                                ...prev.socials,
+                                [socialKey]: e.target.value,
+                              },
+                            }))
+                          }
+                          placeholder={social.placeholder}
+                          className="min-w-0 flex-1 text-xs text-slate-900 outline-none placeholder:text-slate-400"
+                        />
+                        {data.socials[socialKey] && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateDataWithHistory((prev) => ({
+                                ...prev,
+                                socials: {
+                                  ...prev.socials,
+                                  [socialKey]: '',
+                                },
+                              }))
+                            }
+                            className="grid size-7 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            title={`Hapus ${social.label}`}
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
