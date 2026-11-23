@@ -1057,8 +1057,12 @@ export default function BioLinkApp() {
   const [quickTitle, setQuickTitle] = useState('');
   const [quickUrl, setQuickUrl] = useState('');
 
+  // Step 2 Profile Onboarding Sub-tab
+  const [profileOnboardingTab, setProfileOnboardingTab] = useState<'profile' | 'header'>('profile');
+
   // Step 3 Color Onboarding Sub-tab
   const [colorOnboardingTab, setColorOnboardingTab] = useState<'wallpaper' | 'buttons'>('wallpaper');
+
 
   // Dashboard States
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('content');
@@ -2562,161 +2566,143 @@ export default function BioLinkApp() {
   // ============================================================================
   if (step === 'step-profile') {
     return (
-      <div className="min-h-screen bg-white text-slate-900 flex flex-col">
-        <header className="px-6 py-5 flex items-center justify-between max-w-4xl w-full mx-auto">
+      <div
+        style={{
+          backgroundImage: 'radial-gradient(#CBD5E1 1.25px, transparent 1.25px)',
+          backgroundSize: '20px 20px',
+        }}
+        className="min-h-[100dvh] h-[100dvh] bg-white text-slate-900 flex flex-col justify-between overflow-hidden"
+      >
+        <header className="px-6 py-3 flex shrink-0 items-center justify-between max-w-4xl w-full mx-auto">
           <button
             type="button"
             onClick={() => setStep('step-links')}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
           {/* Progress Bar 66% */}
-          <div className="w-48 sm:w-64 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="w-48 sm:w-64 h-1.5 bg-slate-200 rounded-full overflow-hidden">
             <div className="w-2/3 h-full bg-sky-500 rounded-full transition-all duration-300" />
           </div>
 
-          <BrandMark muted />
+          <BrandMark />
         </header>
 
-        <main className="flex-1 max-w-md w-full mx-auto px-5 py-6 flex flex-col justify-between">
-          <div className="space-y-6">
+        <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-1">
+          <LivePhoneMockup data={data} compact skeletonMode />
+        </div>
+
+        <div className="shrink-0 bg-white border-t border-slate-200 rounded-t-[32px] shadow-[0_-8px_30px_rgba(15,23,42,0.06)] px-6 pt-4 pb-4">
+          <div className="max-w-md mx-auto space-y-3">
             <div className="text-center">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                Add profile details
-              </h1>
-              <p className="text-sm text-slate-500 mt-1.5">
-                Informasi ini akan tampil di bagian atas halaman bio Anda.
+              <h2 className="text-lg font-bold text-slate-900">Add profile details</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Informasi ini akan tampil di bagian atas halaman bio Anda
               </p>
             </div>
 
-            {/* Avatar Uploader */}
-            <div className="flex flex-col items-center">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 bg-sky-50">
-                  <img
-                    src={data.avatarUrl}
-                    alt={data.displayName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-sky-500 hover:bg-sky-600 text-white flex items-center justify-center border-2 border-white shadow-sm cursor-pointer"
-                  title="Upload Foto Profil"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </div>
-              <span className="text-[11px] text-slate-400 mt-2">
-                Klik tanda + untuk ganti foto profil
-              </span>
+            <div className="bg-slate-100 p-1 rounded-full grid grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setProfileOnboardingTab('profile')}
+                className={`py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                  profileOnboardingTab === 'profile'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfileOnboardingTab('header')}
+                className={`py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                  profileOnboardingTab === 'header'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Header
+              </button>
             </div>
 
-            {/* Header & Banner Layout Picker */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-2">
-                Gaya Header & Banner
-              </label>
-              <div className="grid grid-cols-3 gap-2.5">
-                {(
-                  [
-                    { id: 'classic', label: 'Classic' },
-                    { id: 'banner', label: 'Banner' },
-                    { id: 'hero', label: 'Hero' },
-                  ] as { id: HeaderLayoutType; label: string }[]
-                ).map((item) => {
-                  const selected = data.headerLayout === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setData({ ...data, headerLayout: item.id })}
-                      className={`overflow-hidden rounded-2xl border text-center transition-all cursor-pointer ${selected
-                        ? 'border-sky-500 bg-sky-50 text-sky-700 font-semibold'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
-                    >
-                      <div
-                        className={`relative flex h-24 w-full flex-col items-center overflow-hidden ${
-                          item.id === 'hero'
-                            ? 'justify-end'
-                            : item.id === 'banner'
-                              ? 'justify-end'
-                              : 'justify-center'
-                        }`}
-                        style={{ backgroundColor: data.bannerColor }}
-                      >
-                        {item.id === 'banner' && (
-                          <div
-                            style={{ backgroundColor: data.bannerColor }}
-                            className="absolute inset-x-0 top-0 h-11 opacity-100"
-                          />
-                        )}
-                        {item.id === 'hero' && (
-                          <img
-                            src={data.avatarUrl}
-                            alt=""
-                            className="absolute inset-0 h-full w-full object-cover"
-                          />
-                        )}
-                        {item.id !== 'hero' && (
-                          <img
-                            src={data.avatarUrl}
-                            alt=""
-                            className={`relative z-10 h-9 w-9 rounded-full object-cover border-2 border-white ${
-                              item.id === 'banner' ? '-mt-1 mb-1' : 'mb-1'
-                            }`}
-                          />
-                        )}
-                        {item.id === 'banner' && (
-                          <div className="relative z-10 mb-2 w-[82%] rounded-md bg-white/95 px-1 py-1">
-                            <p className="truncate text-[7px] font-bold text-slate-800">
-                              {data.displayName || 'John Doe'}
-                            </p>
-                          </div>
-                        )}
-                        {item.id === 'classic' && (
-                          <p className="relative z-10 mb-2 truncate text-[7px] font-bold text-slate-800">
-                            {data.displayName || 'John Doe'}
-                          </p>
-                        )}
-                        {item.id === 'hero' && (
-                          <div className="relative z-10 mb-2 w-full bg-white/85 px-2 py-1">
-                            <p className="truncate text-[7px] font-bold text-slate-800">
-                              {data.displayName || 'John Doe'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="px-2 py-2">
-                        <span className="text-xs">{item.label}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+            {profileOnboardingTab === 'profile' ? (
+              <div className="flex items-center gap-3 py-1">
+                <div className="relative shrink-0">
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-200 bg-sky-50">
+                    <img
+                      src={data.avatarUrl}
+                      alt={data.displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-sky-500 hover:bg-sky-600 text-white flex items-center justify-center border-2 border-white shadow-sm cursor-pointer"
+                    title="Upload Foto Profil"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </div>
 
-              <div
-                className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between"
-              >
-                <span className="text-xs font-medium text-slate-600">
-                  {data.headerLayout === 'hero'
-                    ? 'Warna Overlay:'
-                    : data.headerLayout === 'classic'
-                      ? 'Warna Header:'
-                      : 'Warna Banner:'}
-                </span>
-                <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <input
+                    type="text"
+                    maxLength={30}
+                    value={data.displayName}
+                    onChange={(e) => setData({ ...data, displayName: e.target.value })}
+                    placeholder="Display name"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                  />
+                  <input
+                    type="text"
+                    maxLength={160}
+                    value={data.bio}
+                    onChange={(e) => setData({ ...data, bio: e.target.value })}
+                    placeholder="Bio singkat Anda"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5 py-1">
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'classic', label: 'Classic' },
+                      { id: 'banner', label: 'Banner' },
+                      { id: 'hero', label: 'Hero' },
+                    ] as { id: HeaderLayoutType; label: string }[]
+                  ).map((item) => {
+                    const selected = data.headerLayout === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setData({ ...data, headerLayout: item.id })}
+                        className={`py-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                          selected
+                            ? 'border-sky-500 bg-sky-50 text-sky-700'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-center gap-3 pt-0.5">
                   {['#0EA5E9', '#0284C7', '#0F172A', '#434B72', '#38BDF8'].map((hex) => (
                     <button
                       key={hex}
@@ -2724,61 +2710,28 @@ export default function BioLinkApp() {
                       onClick={() => setData({ ...data, bannerColor: hex })}
                       style={{ backgroundColor: hex }}
                       aria-label={`Gunakan warna ${hex}`}
-                      className={`w-6 h-6 rounded-full border-2 cursor-pointer ${
+                      className={`w-8 h-8 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
                         data.bannerColor === hex
-                          ? 'border-slate-900 scale-110'
-                          : 'border-white'
+                          ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
+                          : 'border-slate-300 hover:scale-105'
                       }`}
-                    />
+                    >
+                      {data.bannerColor === hex && <Check className="w-3.5 h-3.5 text-white" />}
+                    </button>
                   ))}
                 </div>
               </div>
+            )}
 
-            </div>
-
-            {/* Display Name & Bio Inputs */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Display name
-                </label>
-                <input
-                  type="text"
-                  maxLength={30}
-                  value={data.displayName}
-                  onChange={(e) => setData({ ...data, displayName: e.target.value })}
-                  placeholder="John Doe"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Bio</label>
-                <textarea
-                  rows={3}
-                  maxLength={160}
-                  value={data.bio}
-                  onChange={(e) => setData({ ...data, bio: e.target.value })}
-                  placeholder="Ceritakan singkat tentang apa yang Anda lakukan"
-                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 resize-none"
-                />
-                <div className="text-right text-[11px] text-slate-400 mt-1">
-                  {data.bio.length}/160
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 pb-4">
             <button
               type="button"
               onClick={() => setStep('step-color')}
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm py-3.5 rounded-full transition-colors cursor-pointer"
+              className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm py-3 rounded-full transition-colors cursor-pointer"
             >
               Continue
             </button>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
