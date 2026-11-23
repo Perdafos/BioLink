@@ -1467,6 +1467,24 @@ export default function BioLinkApp() {
     }, 150);
   };
 
+  const refreshProfiles = async () => {
+    if (!userId) return;
+
+    const { data: ownedProfiles, error } = await supabase
+      .from('bio_profiles')
+      .select('id, username, display_name, avatar_url')
+      .eq('owner_id', userId)
+      .order('username', { ascending: true });
+
+    if (error) {
+      console.error('Gagal memperbarui daftar Linktree:', error.message);
+      showToast(`Gagal memperbarui daftar Linktree: ${error.message}`);
+      return;
+    }
+
+    setProfiles((ownedProfiles || []) as ProfileSummary[]);
+  };
+
   const createProfile = async () => {
     if (!userId) {
       showToast('Anda harus masuk terlebih dahulu');
@@ -1525,6 +1543,7 @@ export default function BioLinkApp() {
         avatar_url: newProfile.avatarUrl,
       },
     ]);
+    void refreshProfiles();
     setActiveProfileId(profileId);
     setData(newProfile);
     setShowProfileMenu(false);
@@ -4237,7 +4256,11 @@ export default function BioLinkApp() {
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => setDashboardView('overview')}
+            onClick={() => {
+              setDashboardSection('overview');
+              setDashboardView('overview');
+              void refreshProfiles();
+            }}
             className="grid size-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:text-violet-600"
             title="Kembali ke Dashboard"
           >
