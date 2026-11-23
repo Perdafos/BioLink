@@ -23,14 +23,14 @@ const App = () => {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl">
             <Layers className="w-6 h-6 text-primary" />
-            <span>ReactStack By Perdafos</span>
+            <span>ReactStack</span>
           </div>
           <div className="flex items-center gap-4">
             <Button size="sm" onClick={() => setOpenApp(true)}>
               Masuk BioLink
             </Button>
             <Button variant="outline" size="sm" className="gap-2" asChild>
-              <a href="https://github.com/perdafos" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com" target="_blank" rel="noopener noreferrer">
                 <Github className="w-4 h-4" /> GitHub
               </a>
             </Button>
@@ -70,7 +70,7 @@ const App = () => {
 
       <footer className="border-t py-10">
         <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
-          &copy; {new Date().getFullYear()} React Starter Pack. Built by Perdafos.
+          &copy; {new Date().getFullYear()} React Starter Pack.
         </div>
       </footer>
     </div>

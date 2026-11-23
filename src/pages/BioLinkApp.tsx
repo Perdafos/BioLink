@@ -217,6 +217,43 @@ const INITIAL_STATE: BioPageState = {
   stickers: [],
 };
 
+const sanitizeLegacyProfileValue = (
+  value: string,
+  kind: 'displayName' | 'username' | 'bio',
+) => {
+  const normalized = value.trim();
+  const legacyText = normalized.toLowerCase();
+
+  if (
+    kind === 'displayName' &&
+    (legacyText.includes('dafa') ||
+      legacyText.includes('ghaitsa') ||
+      legacyText.includes('perdafos'))
+  ) {
+    return 'John Doe';
+  }
+
+  if (
+    kind === 'username' &&
+    (legacyText.includes('dafa') ||
+      legacyText.includes('ghaitsa') ||
+      legacyText.includes('perdafos'))
+  ) {
+    return 'john-doe';
+  }
+
+  if (
+    kind === 'bio' &&
+    (legacyText.includes('full-stack web developer') ||
+      legacyText.includes('iot enthusiast') ||
+      legacyText.includes('membangun produk digital modern'))
+  ) {
+    return 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
+  }
+
+  return value;
+};
+
 // Helper to determine if background hex is light or dark
 function isColorLight(hex: string): boolean {
   const clean = hex.replace('#', '');
@@ -994,7 +1031,7 @@ const LivePhoneMockup: React.FC<{
             {data.showFooterBadge && (
               <div className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-200 px-4 py-2 rounded-full text-[11px] font-semibold shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-sky-500" />
-                <span>Join {data.username || 'john-doe'} on BioLink</span>
+                <span>Join {data.displayName || 'John Doe'} on BioLink</span>
               </div>
             )}
           </div>
@@ -1231,9 +1268,12 @@ export default function BioLinkApp() {
 
         setPublicProfile({
           accountEmail: '',
-          username: publicProfileRow.username,
-          displayName: publicProfileRow.display_name || publicProfileRow.username,
-          bio: publicProfileRow.bio || '',
+          username: sanitizeLegacyProfileValue(publicProfileRow.username, 'username'),
+          displayName: sanitizeLegacyProfileValue(
+            publicProfileRow.display_name || publicProfileRow.username,
+            'displayName',
+          ),
+          bio: sanitizeLegacyProfileValue(publicProfileRow.bio || '', 'bio'),
           avatarUrl: publicProfileRow.avatar_url || INITIAL_STATE.avatarUrl,
           bannerColor: publicProfileRow.banner_color || '#0EA5E9',
           bannerUrl: publicProfileRow.banner_url || '',
@@ -1331,9 +1371,12 @@ export default function BioLinkApp() {
         window.localStorage.setItem('biolink-active-profile-id', profile.id);
         setData({
           accountEmail: email,
-          username: profile.username,
-          displayName: profile.display_name || profile.username,
-          bio: profile.bio || '',
+          username: sanitizeLegacyProfileValue(profile.username, 'username'),
+          displayName: sanitizeLegacyProfileValue(
+            profile.display_name || profile.username,
+            'displayName',
+          ),
+          bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
           avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
           bannerColor: profile.banner_color || '#0EA5E9',
           bannerUrl: profile.banner_url || '',
@@ -1445,9 +1488,12 @@ export default function BioLinkApp() {
     window.localStorage.setItem('biolink-active-profile-id', profileId);
     setData({
       accountEmail: data.accountEmail,
-      username: profile.username,
-      displayName: profile.display_name || profile.username,
-      bio: profile.bio || '',
+      username: sanitizeLegacyProfileValue(profile.username, 'username'),
+      displayName: sanitizeLegacyProfileValue(
+        profile.display_name || profile.username,
+        'displayName',
+      ),
+      bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
       avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
       bannerColor: profile.banner_color || '#0EA5E9',
       bannerUrl: profile.banner_url || '',
@@ -4979,6 +5025,35 @@ export default function BioLinkApp() {
                       onChange={handleAvatarUpload}
                       className="hidden"
                     />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
+                <label className="text-xs font-semibold text-slate-700 pt-3">Username</label>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-sky-500">
+                    <span className="shrink-0 border-r border-slate-100 px-3 py-3 text-sm text-slate-400">
+                      linktree/
+                    </span>
+                    <input
+                      type="text"
+                      maxLength={30}
+                      value={data.username}
+                      onChange={(e) =>
+                        updateDataWithHistory((prev) => ({
+                          ...prev,
+                          username: e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9-]/g, ''),
+                        }))
+                      }
+                      className="min-w-0 flex-1 px-3 py-3 text-sm text-slate-900 outline-none"
+                      placeholder="john-doe"
+                    />
+                  </div>
+                  <div className="text-right text-[11px] text-slate-400 mt-1">
+                    {data.username.length}/30
                   </div>
                 </div>
               </div>
