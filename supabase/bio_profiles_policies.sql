@@ -1,8 +1,23 @@
 -- Run this script in Supabase Dashboard -> SQL Editor.
--- The frontend stores one profile per authenticated user, using auth.users.id
--- as bio_profiles.id.
+-- Multiple pages belong to one authenticated account through owner_id.
 
 alter table public.bio_profiles enable row level security;
+
+alter table public.bio_profiles
+  add column if not exists owner_id uuid;
+
+update public.bio_profiles
+set owner_id = id
+where owner_id is null;
+
+alter table public.bio_profiles
+  alter column owner_id set not null;
+
+alter table public.bio_profiles
+  alter column owner_id set default auth.uid();
+
+create index if not exists bio_profiles_owner_id_idx
+  on public.bio_profiles(owner_id);
 
 alter table public.bio_profiles
   add column if not exists seo_title text not null default '',
@@ -32,7 +47,7 @@ begin
     raise exception 'Authentication required';
   end if;
 
-  delete from public.bio_profiles where id = current_user_id;
+  delete from public.bio_profiles where owner_id = current_user_id;
   delete from auth.users where id = current_user_id;
 end;
 $$;
@@ -45,29 +60,29 @@ create policy "Users can read their own bio profile"
   on public.bio_profiles
   for select
   to authenticated
-  using (auth.uid() = id);
+  using (auth.uid() = owner_id);
 
 drop policy if exists "Users can create their own bio profile" on public.bio_profiles;
 create policy "Users can create their own bio profile"
   on public.bio_profiles
   for insert
   to authenticated
-  with check (auth.uid() = id);
+  with check (auth.uid() = owner_id);
 
 drop policy if exists "Users can update their own bio profile" on public.bio_profiles;
 create policy "Users can update their own bio profile"
   on public.bio_profiles
   for update
   to authenticated
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+  using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
 
 drop policy if exists "Users can delete their own bio profile" on public.bio_profiles;
 create policy "Users can delete their own bio profile"
   on public.bio_profiles
   for delete
   to authenticated
-  using (auth.uid() = id);
+  using (auth.uid() = owner_id);
 
 -- Registration checks username uniqueness before an account has a session.
 -- Use a narrowly scoped function instead of exposing profile rows to anon.

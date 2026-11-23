@@ -24,7 +24,6 @@ import {
   Redo2,
   ExternalLink,
   LogOut,
-  RotateCcw,
   X,
   QrCode,
   Edit3,
@@ -136,6 +135,13 @@ interface BioPageState {
   socials: SocialChannels;
   links: LinkItem[];
   stickers: StickerItem[];
+}
+
+interface ProfileSummary {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 // --- SOLID COLOR PALETTES (ZERO GRADIENTS) ---
@@ -1003,6 +1009,8 @@ const LivePhoneMockup: React.FC<{
 export default function BioLinkApp() {
   const [data, setData] = useState<BioPageState>(INITIAL_STATE);
   const [step, setStep] = useState<AppStep>('login');
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
 
   // Supabase Auth States
   const [userId, setUserId] = useState<string | null>(null);
@@ -1289,19 +1297,32 @@ export default function BioLinkApp() {
   ) => {
     isHydratingRef.current = true;
     try {
-      const { data: profile, error } = await supabase
+      const { data: ownedProfiles, error: profilesError } = await supabase
         .from('bio_profiles')
-        .select('*')
-        .eq('id', uid)
-        .maybeSingle();
+        .select('id, username, display_name, avatar_url')
+        .eq('owner_id', uid)
+        .order('username', { ascending: true });
 
-      if (error) {
-        console.error('Gagal memuat profil:', error.message);
-        setAuthError(`Gagal memuat profil: ${error.message}`);
+      if (profilesError) {
+        console.error('Gagal memuat daftar profil:', profilesError.message);
+        setAuthError(`Gagal memuat profil: ${profilesError.message}`);
         return;
       }
 
+      const profileRows = (ownedProfiles || []) as ProfileSummary[];
+      setProfiles(profileRows);
+
+      const profile = profileRows.length
+        ? await supabase
+            .from('bio_profiles')
+            .select('*')
+            .eq('id', profileRows[0].id)
+            .maybeSingle()
+            .then(({ data: selectedProfile }) => selectedProfile)
+        : null;
+
       if (profile) {
+        setActiveProfileId(profile.id);
         setData({
           accountEmail: email,
           username: profile.username,
@@ -1342,6 +1363,7 @@ export default function BioLinkApp() {
 
         const { error: insertError } = await supabase.from('bio_profiles').insert({
           id: uid,
+          owner_id: uid,
           username: newProfile.username,
           display_name: newProfile.displayName,
           bio: newProfile.bio,
@@ -1371,6 +1393,13 @@ export default function BioLinkApp() {
           return;
         }
 
+        setActiveProfileId(uid);
+        setProfiles([{
+          id: uid,
+          username: newProfile.username,
+          display_name: newProfile.displayName,
+          avatar_url: newProfile.avatarUrl,
+        }]);
         setData(newProfile);
         setStep('step-links');
       }
@@ -1379,6 +1408,127 @@ export default function BioLinkApp() {
         isHydratingRef.current = false;
       }, 150);
     }
+  };
+
+  const switchProfile = async (profileId: string) => {
+    if (!userId || profileId === activeProfileId) return;
+
+    isHydratingRef.current = true;
+    const { data: profile, error } = await supabase
+      .from('bio_profiles')
+      .select('*')
+      .eq('id', profileId)
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      showToast(`Gagal membuka halaman: ${error.message}`);
+      isHydratingRef.current = false;
+      return;
+    }
+
+    if (!profile) {
+      showToast('Halaman tidak ditemukan');
+      isHydratingRef.current = false;
+      return;
+    }
+
+    setActiveProfileId(profileId);
+    setData({
+      accountEmail: data.accountEmail,
+      username: profile.username,
+      displayName: profile.display_name || profile.username,
+      bio: profile.bio || '',
+      avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
+      bannerColor: profile.banner_color || '#0EA5E9',
+      bannerUrl: profile.banner_url || '',
+      headerLayout: (profile.header_layout as HeaderLayoutType) || 'classic',
+      profileShape: (profile.profile_shape as ProfileShape) || 'circle',
+      titleColor: profile.title_color || '#0F172A',
+      wallpaperColor: profile.wallpaper_color || '#FFFFFF',
+      buttonColor: profile.button_color || '#0EA5E9',
+      buttonTextColor: profile.button_text_color || '#FFFFFF',
+      buttonVariant: (profile.button_variant as ButtonVariant) || 'solid',
+      fontFamily: (profile.font_family as FontChoice) || 'DM Sans',
+      showFooterBadge: profile.show_footer_badge ?? true,
+      seoTitle: profile.seo_title || '',
+      seoDescription: profile.seo_description || '',
+      noIndex: profile.no_index ?? false,
+      socials: { ...INITIAL_STATE.socials, ...(profile.socials || {}) },
+      links: Array.isArray(profile.links) ? profile.links : [],
+      stickers: normalizeStickers(profile.stickers),
+    });
+    setDashboardView('overview');
+    setDashboardSection('overview');
+    setShowProfileMenu(false);
+    setStep('dashboard');
+    setTimeout(() => {
+      isHydratingRef.current = false;
+    }, 150);
+  };
+
+  const createProfile = async () => {
+    if (!userId) {
+      showToast('Anda harus masuk terlebih dahulu');
+      return;
+    }
+
+    const profileId = crypto.randomUUID();
+    const suffix = Date.now().toString().slice(-6);
+    const username = `linktree-${suffix}`;
+    const newProfile: BioPageState = {
+      ...INITIAL_STATE,
+      accountEmail: data.accountEmail,
+      username,
+      displayName: 'John Doe',
+      bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+      links: [],
+    };
+
+    const { error } = await supabase.from('bio_profiles').insert({
+      id: profileId,
+      owner_id: userId,
+      username: newProfile.username,
+      display_name: newProfile.displayName,
+      bio: newProfile.bio,
+      avatar_url: newProfile.avatarUrl,
+      banner_color: newProfile.bannerColor,
+      banner_url: newProfile.bannerUrl,
+      header_layout: newProfile.headerLayout,
+      profile_shape: newProfile.profileShape,
+      title_color: newProfile.titleColor,
+      wallpaper_color: newProfile.wallpaperColor,
+      button_color: newProfile.buttonColor,
+      button_text_color: newProfile.buttonTextColor,
+      button_variant: newProfile.buttonVariant,
+      font_family: newProfile.fontFamily,
+      show_footer_badge: newProfile.showFooterBadge,
+      seo_title: newProfile.seoTitle,
+      seo_description: newProfile.seoDescription,
+      no_index: newProfile.noIndex,
+      socials: newProfile.socials,
+      links: newProfile.links,
+      stickers: newProfile.stickers,
+    });
+
+    if (error) {
+      showToast(`Gagal membuat Linktree: ${error.message}`);
+      return;
+    }
+
+    setProfiles((prev) => [
+      ...prev,
+      {
+        id: profileId,
+        username,
+        display_name: newProfile.displayName,
+        avatar_url: newProfile.avatarUrl,
+      },
+    ]);
+    setActiveProfileId(profileId);
+    setData(newProfile);
+    setShowProfileMenu(false);
+    setStep('step-links');
   };
 
   // Cek sesi login saat halaman dimuat
@@ -1416,7 +1566,7 @@ export default function BioLinkApp() {
 
   // Auto-sync perubahan data ke Supabase (debounce 600ms)
   useEffect(() => {
-    if (!userId || step === 'login' || isHydratingRef.current) return;
+    if (!userId || !activeProfileId || step === 'login' || isHydratingRef.current) return;
 
     setSyncStatus('saving');
     const timeout = setTimeout(async () => {
@@ -1446,10 +1596,22 @@ export default function BioLinkApp() {
           stickers: data.stickers,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', userId);
+        .eq('id', activeProfileId);
 
       if (!error) {
         setSyncStatus('saved');
+        setProfiles((prev) =>
+          prev.map((profile) =>
+            profile.id === activeProfileId
+              ? {
+                  ...profile,
+                  username: data.username,
+                  display_name: data.displayName,
+                  avatar_url: data.avatarUrl,
+                }
+              : profile,
+          ),
+        );
       } else {
         console.error('Gagal sync ke Supabase:', error.message);
         setSyncStatus('idle');
@@ -1457,7 +1619,7 @@ export default function BioLinkApp() {
     }, 600);
 
     return () => clearTimeout(timeout);
-  }, [data, userId, step]);
+  }, [data, userId, activeProfileId, step]);
 
   // Automatic transition timer for Step 5 ("Looking good. Let's keep building...")
   useEffect(() => {
@@ -1800,7 +1962,7 @@ export default function BioLinkApp() {
     const { data: ownProfile } = await supabase
       .from('bio_profiles')
       .select('username')
-      .eq('id', userId)
+      .eq('id', activeProfileId)
       .maybeSingle();
 
     if (usernameAvailable === false && ownProfile?.username !== data.username) {
@@ -2688,6 +2850,37 @@ export default function BioLinkApp() {
                   onMouseLeave={() => setShowProfileMenu(false)}
                   className="absolute left-0 top-11 w-52 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg z-50"
                 >
+                  <div className="max-h-48 space-y-1 overflow-y-auto border-b border-slate-100 pb-2 mb-1">
+                    {profiles.map((profile) => (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        onClick={() => void switchProfile(profile.id)}
+                        className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left hover:bg-slate-50 ${
+                          profile.id === activeProfileId ? 'bg-violet-50' : ''
+                        }`}
+                      >
+                        <img
+                          src={profile.avatar_url || INITIAL_STATE.avatarUrl}
+                          alt=""
+                          className="size-7 rounded-full object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-bold text-slate-900">
+                            {profile.display_name || profile.username}
+                          </p>
+                          <p className="truncate text-[10px] text-slate-400">/{profile.username}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void createProfile()}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50"
+                  >
+                    <Plus className="size-3.5" /> Tambah Linktree
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -4054,12 +4247,12 @@ export default function BioLinkApp() {
                 type="button"
                 onClick={() => {
                   setShowAccountMenu(false);
-                  setStep('step-links');
+                  void createProfile();
                 }}
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-2 cursor-pointer"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Ulangi Alur Onboarding
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Linktree
               </button>
               <button
                 type="button"
