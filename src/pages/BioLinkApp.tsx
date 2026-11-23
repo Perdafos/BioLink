@@ -551,7 +551,7 @@ const LivePhoneMockup: React.FC<{
             : undefined,
         }}
         className={`relative overflow-hidden transition-all duration-300 select-none ${fontClass} ${compact
-          ? 'w-[230px] h-[440px] rounded-[34px] border-[6px] border-neutral-900 shadow-xl'
+          ? 'w-[220px] h-[420px] rounded-[34px] border-[6px] border-neutral-900 shadow-xl'
           : 'w-[325px] sm:w-[345px] min-h-[630px] max-h-[76vh] rounded-[40px] border border-slate-200/80 shadow-[0_12px_40px_rgba(15,23,42,0.08)]'
           }`}
       >
@@ -773,20 +773,13 @@ const LivePhoneMockup: React.FC<{
                   {data.displayName || 'Your Name'}
                 </h3>
 
-                {skeletonMode ? (
-                  <div className="mt-2 space-y-1.5 flex flex-col items-center">
-                    <div className="w-36 h-2 rounded-full bg-current opacity-20" />
-                    <div className="w-24 h-2 rounded-full bg-current opacity-15" />
-                  </div>
-                ) : (
-                  data.bio && (
-                    <p
-                      style={{ color: subTextColor }}
-                      className="mt-1.5 text-xs leading-relaxed max-w-[260px] mx-auto"
-                    >
-                      {data.bio}
-                    </p>
-                  )
+                {data.bio && (
+                  <p
+                    style={{ color: subTextColor }}
+                    className="mt-1.5 text-xs leading-relaxed max-w-[260px] mx-auto"
+                  >
+                    {data.bio}
+                  </p>
                 )}
               </div>
             )}
