@@ -2648,49 +2648,99 @@ export default function BioLinkApp() {
                       key={item.id}
                       type="button"
                       onClick={() => setData({ ...data, headerLayout: item.id })}
-                      className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${selected
+                      className={`overflow-hidden rounded-2xl border text-center transition-all cursor-pointer ${selected
                         ? 'border-sky-500 bg-sky-50 text-sky-700 font-semibold'
                         : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                     >
-                      <div className="w-full h-10 rounded-lg bg-slate-100 mb-2 overflow-hidden flex flex-col items-center justify-center relative">
+                      <div
+                        className={`relative flex h-24 w-full flex-col items-center overflow-hidden ${
+                          item.id === 'hero'
+                            ? 'justify-end'
+                            : item.id === 'banner'
+                              ? 'justify-end'
+                              : 'justify-center'
+                        }`}
+                        style={{ backgroundColor: data.bannerColor }}
+                      >
                         {item.id === 'banner' && (
                           <div
                             style={{ backgroundColor: data.bannerColor }}
-                            className="w-full h-4 absolute top-0"
+                            className="absolute inset-x-0 top-0 h-11 opacity-100"
                           />
                         )}
-                        {item.id === 'hero' ? (
-                          <div className="w-full h-full bg-sky-500/20 flex items-center justify-center">
-                            <div className="w-5 h-5 rounded-full bg-sky-500" />
+                        {item.id === 'hero' && (
+                          <img
+                            src={data.avatarUrl}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        )}
+                        {item.id !== 'hero' && (
+                          <img
+                            src={data.avatarUrl}
+                            alt=""
+                            className={`relative z-10 h-9 w-9 rounded-full object-cover border-2 border-white ${
+                              item.id === 'banner' ? '-mt-1 mb-1' : 'mb-1'
+                            }`}
+                          />
+                        )}
+                        {item.id === 'banner' && (
+                          <div className="relative z-10 mb-2 w-[82%] rounded-md bg-white/95 px-1 py-1">
+                            <p className="truncate text-[7px] font-bold text-slate-800">
+                              {data.displayName || 'John Doe'}
+                            </p>
                           </div>
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-sky-500 relative z-10 mt-1" />
+                        )}
+                        {item.id === 'classic' && (
+                          <p className="relative z-10 mb-2 truncate text-[7px] font-bold text-slate-800">
+                            {data.displayName || 'John Doe'}
+                          </p>
+                        )}
+                        {item.id === 'hero' && (
+                          <div className="relative z-10 mb-2 w-full bg-white/85 px-2 py-1">
+                            <p className="truncate text-[7px] font-bold text-slate-800">
+                              {data.displayName || 'John Doe'}
+                            </p>
+                          </div>
                         )}
                       </div>
-                      <span className="text-xs">{item.label}</span>
+                      <div className="px-2 py-2">
+                        <span className="text-xs">{item.label}</span>
+                      </div>
                     </button>
                   );
                 })}
               </div>
 
-              {data.headerLayout === 'banner' && (
-                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-600">Warna Banner:</span>
-                  <div className="flex items-center gap-2">
-                    {['#0EA5E9', '#0284C7', '#0F172A', '#434B72', '#38BDF8'].map((hex) => (
-                      <button
-                        key={hex}
-                        type="button"
-                        onClick={() => setData({ ...data, bannerColor: hex })}
-                        style={{ backgroundColor: hex }}
-                        className={`w-6 h-6 rounded-full border-2 cursor-pointer ${data.bannerColor === hex ? 'border-slate-900 scale-110' : 'border-white'
-                          }`}
-                      />
-                    ))}
-                  </div>
+              <div
+                className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between"
+              >
+                <span className="text-xs font-medium text-slate-600">
+                  {data.headerLayout === 'hero'
+                    ? 'Warna Overlay:'
+                    : data.headerLayout === 'classic'
+                      ? 'Warna Header:'
+                      : 'Warna Banner:'}
+                </span>
+                <div className="flex items-center gap-2">
+                  {['#0EA5E9', '#0284C7', '#0F172A', '#434B72', '#38BDF8'].map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      onClick={() => setData({ ...data, bannerColor: hex })}
+                      style={{ backgroundColor: hex }}
+                      aria-label={`Gunakan warna ${hex}`}
+                      className={`w-6 h-6 rounded-full border-2 cursor-pointer ${
+                        data.bannerColor === hex
+                          ? 'border-slate-900 scale-110'
+                          : 'border-white'
+                      }`}
+                    />
+                  ))}
                 </div>
-              )}
+              </div>
+
             </div>
 
             {/* Display Name & Bio Inputs */}
