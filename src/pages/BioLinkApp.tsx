@@ -4070,42 +4070,56 @@ export default function BioLinkApp() {
 
                 <section>
                   <h2 className="mb-4 text-[15px] font-bold">Your Linktree</h2>
-                  <Card className="inline-block w-[218px] overflow-hidden rounded-[17px] border-0 bg-[#4d6688] p-0 text-left text-white shadow-sm">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Card className="inline-block w-[218px] overflow-hidden rounded-[17px] border-0 bg-[#4d6688] p-0 text-left text-white shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setDashboardView('editor')}
+                        className="w-full"
+                      >
+                        <div
+                          className="relative h-[228px] overflow-hidden"
+                          style={{
+                            backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${data.avatarUrl})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        >
+                          <div className="absolute inset-x-0 bottom-3 px-3">
+                            <p className="truncate text-[14px] font-bold">{data.displayName}</p>
+                            <p className="mt-0.5 text-[11px] text-white/75">
+                              {activeLinks} {activeLinks === 1 ? 'link' : 'links'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex h-[50px] items-center justify-between px-3">
+                          <span className="min-w-0 truncate text-[13px] font-bold">
+                            {data.displayName}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <span className="grid size-7 place-items-center rounded-full bg-white/15">
+                              <Share2 className="size-3.5" />
+                            </span>
+                            <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
+                              Edit
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    </Card>
+
                     <button
                       type="button"
-                      onClick={() => setDashboardView('editor')}
-                      className="w-full"
+                      onClick={() => void createProfile()}
+                      className="group grid h-[278px] w-[218px] place-items-center rounded-[17px] border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600 cursor-pointer"
+                      aria-label="Tambah Linktree"
+                      title="Tambah Linktree"
                     >
-                      <div
-                        className="relative h-[228px] overflow-hidden"
-                        style={{
-                          backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${data.avatarUrl})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }}
-                      >
-                        <div className="absolute inset-x-0 bottom-3 px-3">
-                          <p className="truncate text-[14px] font-bold">{data.displayName}</p>
-                          <p className="mt-0.5 text-[11px] text-white/75">
-                            {activeLinks} {activeLinks === 1 ? 'link' : 'links'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex h-[50px] items-center justify-between px-3">
-                        <span className="min-w-0 truncate text-[13px] font-bold">
-                          {data.displayName}
-                        </span>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <span className="grid size-7 place-items-center rounded-full bg-white/15">
-                            <Share2 className="size-3.5" />
-                          </span>
-                          <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
-                            Edit
-                          </span>
-                        </div>
-                      </div>
+                      <span className="grid size-12 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition-colors group-hover:border-violet-200 group-hover:text-violet-600">
+                        <Plus className="size-6" strokeWidth={2} />
+                      </span>
                     </button>
-                  </Card>
+                  </div>
                 </section>
 
                 <section className="mt-8">
