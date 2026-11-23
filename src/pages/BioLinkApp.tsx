@@ -253,6 +253,17 @@ const sanitizeLegacyProfileValue = (
   return value;
 };
 
+const getNameFromEmail = (email: string) => {
+  const localPart = email.split('@')[0] || 'John Doe';
+  const formatted = localPart
+    .replace(/[._-]+/g, ' ')
+    .replace(/\d+/g, '')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  return formatted || 'John Doe';
+};
+
 // Helper to determine if background hex is light or dark
 function isColorLight(hex: string): boolean {
   const clean = hex.replace('#', '');
@@ -1363,23 +1374,26 @@ export default function BioLinkApp() {
       if (profile) {
         setActiveProfileId(profile.id);
         window.localStorage.setItem('biolink-active-profile-id', profile.id);
+        const resolvedAccountName =
+          accountDisplayName?.trim() ||
+          getNameFromEmail(email);
         setAccountName(
-          sanitizeLegacyProfileValue(
-            accountDisplayName ||
-              profile.display_name ||
-              profile.username ||
-              email.split('@')[0],
-            'displayName',
-          ),
+          sanitizeLegacyProfileValue(resolvedAccountName, 'displayName'),
         );
         setAccountAvatar(accountImageUrl || profile.avatar_url || INITIAL_STATE.avatarUrl);
+        const loadedDisplayName = sanitizeLegacyProfileValue(
+          profile.display_name || profile.username,
+          'displayName',
+        );
+        const shouldUseAccountName =
+          profile.display_name === profile.username ||
+          ['Untitled Linktree', 'User Baru', 'John Doe'].includes(
+            profile.display_name || '',
+          );
         setData({
           accountEmail: email,
           username: sanitizeLegacyProfileValue(profile.username, 'username'),
-          displayName: sanitizeLegacyProfileValue(
-            profile.display_name || profile.username,
-            'displayName',
-          ),
+          displayName: shouldUseAccountName ? resolvedAccountName : loadedDisplayName,
           bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
           avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
           bannerColor: profile.banner_color || '#0EA5E9',
@@ -1410,7 +1424,8 @@ export default function BioLinkApp() {
           ...INITIAL_STATE,
           accountEmail: email,
           username: cleanUsername || `user${Date.now().toString().slice(-4)}`,
-          displayName: cleanUsername || 'User Baru',
+          displayName:
+            accountDisplayName?.trim() || getNameFromEmail(email),
           links: [],
         };
 
@@ -2003,6 +2018,9 @@ export default function BioLinkApp() {
           password: loginPassword,
           options: {
             emailRedirectTo: APP_URL,
+            data: {
+              full_name: getNameFromEmail(loginEmail.trim()),
+            },
           },
         });
 
@@ -2014,7 +2032,13 @@ export default function BioLinkApp() {
 
         if (signUpData.user && signUpData.session) {
           setUserId(signUpData.user.id);
-          await loadUserProfile(signUpData.user.id, loginEmail.trim(), cleanUser, true);
+          await loadUserProfile(
+            signUpData.user.id,
+            loginEmail.trim(),
+            cleanUser,
+            true,
+            getNameFromEmail(loginEmail.trim()),
+          );
           showToast('Akun berhasil dibuat!');
         } else {
           setAuthError('Pendaftaran berhasil! Cek inbox email kamu untuk konfirmasi, lalu masuk.');
@@ -2038,7 +2062,18 @@ export default function BioLinkApp() {
 
         if (signInData.user) {
           setUserId(signInData.user.id);
-          await loadUserProfile(signInData.user.id, signInData.user.email || loginEmail.trim());
+          const metadata = signInData.user.user_metadata || {};
+          await loadUserProfile(
+            signInData.user.id,
+            signInData.user.email || loginEmail.trim(),
+            undefined,
+            false,
+            metadata.full_name ||
+              metadata.name ||
+              metadata.display_name ||
+              getNameFromEmail(signInData.user.email || loginEmail.trim()),
+            metadata.avatar_url || metadata.picture,
+          );
           showToast('Berhasil masuk!');
         }
       }
