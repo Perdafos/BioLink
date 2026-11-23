@@ -64,7 +64,7 @@ type DashboardSection =
   | 'link-shortener'
   | 'setup'
   | 'settings';
-type HeaderLayoutType = 'classic' | 'hero' | 'banner' | 'cutout' | 'shape';
+type HeaderLayoutType = 'classic' | 'hero' | 'banner' | 'shape';
 type ProfileShape = 'circle' | 'loop' | 'flower' | 'oval' | 'rounded' | 'burst';
 type ButtonVariant = 'solid' | 'outline' | 'soft';
 type FontChoice = 'Inter' | 'DM Sans' | 'Plus Jakarta Sans' | 'JetBrains Mono';
@@ -94,12 +94,10 @@ interface BioPageState {
   displayName: string;
   bio: string;
   avatarUrl: string;
-  avatarOriginalUrl: string;
   bannerColor: string;
   bannerUrl: string;
   headerLayout: HeaderLayoutType;
   profileShape: ProfileShape;
-  cutoutEnabled: boolean;
   titleColor: string;
   wallpaperColor: string;
   buttonColor: string;
@@ -162,13 +160,10 @@ const INITIAL_STATE: BioPageState = {
   bio: 'Full-Stack Web Developer & IoT Enthusiast. Membangun produk digital modern.',
   avatarUrl:
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  avatarOriginalUrl:
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
   bannerColor: '#0EA5E9',
   bannerUrl: '',
   headerLayout: 'classic',
   profileShape: 'circle',
-  cutoutEnabled: false,
   titleColor: '#0F172A',
   wallpaperColor: '#FFFFFF',
   buttonColor: '#0EA5E9',
@@ -349,30 +344,6 @@ const LivePhoneMockup: React.FC<{
                   <p style={{ color: subTextColor }} className="text-[11px] line-clamp-2 mt-0.5">{data.bio}</p>
                 )}
               </div>
-            </div>
-          ) : data.headerLayout === 'cutout' ? (
-            <div className="relative px-6 pt-10 text-center">
-              <div
-                className="w-28 h-28 mx-auto overflow-hidden"
-                style={getProfileShapeStyle(data.profileShape)}
-              >
-                <img
-                  src={data.avatarUrl}
-                  alt={data.displayName}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3
-                style={{ color: resolvedTitleColor }}
-                className="mt-3 font-bold text-base tracking-tight"
-              >
-                {data.displayName || 'Your Name'}
-              </h3>
-              {data.bio && (
-                <p style={{ color: subTextColor }} className="mt-1 text-xs leading-relaxed max-w-[260px] mx-auto">
-                  {data.bio}
-                </p>
-              )}
             </div>
           ) : data.headerLayout === 'shape' ? (
             <div className="px-6 pt-12 text-center">
@@ -746,7 +717,6 @@ export default function BioLinkApp() {
   const [modalThumbnailUrl, setModalThumbnailUrl] = useState('');
   const [modalIconUrl, setModalIconUrl] = useState('');
   const [activeShareLink, setActiveShareLink] = useState<LinkItem | null>(null);
-  const [cutoutProcessing, setCutoutProcessing] = useState(false);
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -820,12 +790,10 @@ export default function BioLinkApp() {
           display_name: string | null;
           bio: string | null;
           avatar_url: string | null;
-          avatar_original_url: string | null;
           banner_color: string | null;
           banner_url: string | null;
           header_layout: string | null;
           profile_shape: string | null;
-          cutout_enabled: boolean | null;
           title_color: string | null;
           wallpaper_color: string | null;
           button_color: string | null;
@@ -846,12 +814,10 @@ export default function BioLinkApp() {
           displayName: publicProfileRow.display_name || publicProfileRow.username,
           bio: publicProfileRow.bio || '',
           avatarUrl: publicProfileRow.avatar_url || INITIAL_STATE.avatarUrl,
-          avatarOriginalUrl: publicProfileRow.avatar_original_url || publicProfileRow.avatar_url || INITIAL_STATE.avatarOriginalUrl,
           bannerColor: publicProfileRow.banner_color || '#0EA5E9',
           bannerUrl: publicProfileRow.banner_url || '',
           headerLayout: (publicProfileRow.header_layout as HeaderLayoutType) || 'classic',
           profileShape: (publicProfileRow.profile_shape as ProfileShape) || 'circle',
-          cutoutEnabled: publicProfileRow.cutout_enabled ?? false,
           titleColor: publicProfileRow.title_color || '#0F172A',
           wallpaperColor: publicProfileRow.wallpaper_color || '#FFFFFF',
           buttonColor: publicProfileRow.button_color || '#0EA5E9',
@@ -928,12 +894,10 @@ export default function BioLinkApp() {
           displayName: profile.display_name || profile.username,
           bio: profile.bio || '',
           avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
-          avatarOriginalUrl: profile.avatar_original_url || profile.avatar_url || INITIAL_STATE.avatarOriginalUrl,
           bannerColor: profile.banner_color || '#0EA5E9',
           bannerUrl: profile.banner_url || '',
           headerLayout: (profile.header_layout as HeaderLayoutType) || 'classic',
           profileShape: (profile.profile_shape as ProfileShape) || 'circle',
-          cutoutEnabled: profile.cutout_enabled ?? false,
           titleColor: profile.title_color || '#0F172A',
           wallpaperColor: profile.wallpaper_color || '#FFFFFF',
           buttonColor: profile.button_color || '#0EA5E9',
@@ -967,12 +931,10 @@ export default function BioLinkApp() {
           display_name: newProfile.displayName,
           bio: newProfile.bio,
           avatar_url: newProfile.avatarUrl,
-          avatar_original_url: newProfile.avatarOriginalUrl,
           banner_color: newProfile.bannerColor,
           banner_url: newProfile.bannerUrl,
           header_layout: newProfile.headerLayout,
           profile_shape: newProfile.profileShape,
-          cutout_enabled: newProfile.cutoutEnabled,
           title_color: newProfile.titleColor,
           wallpaper_color: newProfile.wallpaperColor,
           button_color: newProfile.buttonColor,
@@ -1049,12 +1011,10 @@ export default function BioLinkApp() {
           display_name: data.displayName,
           bio: data.bio,
           avatar_url: data.avatarUrl,
-          avatar_original_url: data.avatarOriginalUrl,
           banner_color: data.bannerColor,
           banner_url: data.bannerUrl,
           header_layout: data.headerLayout,
           profile_shape: data.profileShape,
-          cutout_enabled: data.cutoutEnabled,
           title_color: data.titleColor,
           wallpaper_color: data.wallpaperColor,
           button_color: data.buttonColor,
@@ -1222,8 +1182,6 @@ export default function BioLinkApp() {
         updateDataWithHistory((prev) => ({
           ...prev,
           avatarUrl: reader.result as string,
-          avatarOriginalUrl: reader.result as string,
-          cutoutEnabled: false,
         }));
         showToast('Foto profil diperbarui');
       }
@@ -1252,142 +1210,6 @@ export default function BioLinkApp() {
     reader.readAsDataURL(file);
   };
 
-  const cleanCutoutBlob = async (blob: Blob): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(blob);
-      const image = new Image();
-      image.onload = () => {
-        const maxSize = 900;
-        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-        const width = Math.max(1, Math.round(image.width * scale));
-        const height = Math.max(1, Math.round(image.height * scale));
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (!context) {
-          URL.revokeObjectURL(url);
-          reject(new Error('Canvas not supported'));
-          return;
-        }
-
-        context.drawImage(image, 0, 0, width, height);
-        const pixels = context.getImageData(0, 0, width, height);
-        const { data: rgba } = pixels;
-
-        for (let index = 0; index < rgba.length; index += 4) {
-          if (rgba[index + 3] < 32) {
-            rgba[index + 3] = 0;
-          } else if (rgba[index + 3] < 180) {
-            rgba[index + 3] = Math.round(rgba[index + 3] * 0.72);
-          }
-        }
-
-        // Keep only the largest foreground component; this removes isolated
-        // floating matte/colour artifacts while preserving the subject.
-        const visited = new Uint8Array(width * height);
-        let bestComponent: number[] = [];
-
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const start = y * width + x;
-            if (visited[start] || rgba[start * 4 + 3] < 96) continue;
-            const stack = [start];
-            const component: number[] = [];
-            visited[start] = 1;
-
-            while (stack.length) {
-              const pixel = stack.pop()!;
-              component.push(pixel);
-              const px = pixel % width;
-              const py = Math.floor(pixel / width);
-
-              if (px > 0) {
-                const neighbor = pixel - 1;
-                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
-                  visited[neighbor] = 1;
-                  stack.push(neighbor);
-                }
-              }
-              if (px + 1 < width) {
-                const neighbor = pixel + 1;
-                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
-                  visited[neighbor] = 1;
-                  stack.push(neighbor);
-                }
-              }
-              if (py > 0) {
-                const neighbor = pixel - width;
-                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
-                  visited[neighbor] = 1;
-                  stack.push(neighbor);
-                }
-              }
-              if (py + 1 < height) {
-                const neighbor = pixel + width;
-                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
-                  visited[neighbor] = 1;
-                  stack.push(neighbor);
-                }
-              }
-            }
-
-            if (component.length > bestComponent.length) bestComponent = component;
-          }
-        }
-
-        const kept = new Uint8Array(width * height);
-        bestComponent.forEach((pixel) => {
-          kept[pixel] = 1;
-        });
-        for (let pixel = 0; pixel < kept.length; pixel++) {
-          if (!kept[pixel]) rgba[pixel * 4 + 3] = 0;
-        }
-
-        context.putImageData(pixels, 0, 0);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      image.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error('Unable to read cutout result'));
-      };
-      image.src = url;
-    });
-
-  const handleAutomaticCutout = () => {
-    if (!data.avatarUrl || cutoutProcessing) return;
-    const originalSource = data.avatarOriginalUrl || data.avatarUrl;
-    setCutoutProcessing(true);
-    showToast('Menghapus background, tunggu sebentar...');
-
-    void (async () => {
-      try {
-        const { removeBackground } = await import('@imgly/background-removal');
-        const blob = await removeBackground(originalSource, {
-          model: 'isnet',
-          output: {
-            format: 'image/png',
-            quality: 1,
-          },
-        });
-        const cleanedCutout = await cleanCutoutBlob(blob);
-          updateDataWithHistory((prev) => ({
-            ...prev,
-            avatarOriginalUrl: originalSource,
-            avatarUrl: cleanedCutout,
-            cutoutEnabled: true,
-            headerLayout: 'cutout',
-          }));
-          showToast('Background profil berhasil dihapus');
-      } catch (error) {
-        console.error('Gagal menghapus background:', error);
-        showToast('Gagal menghapus background. Coba unggah foto dengan kualitas lebih baik.');
-      } finally {
-        setCutoutProcessing(false);
-      }
-    })();
-  };
 
   // --- STEP 0: LOGIN & REGISTER SUPABASE ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -3807,13 +3629,12 @@ export default function BioLinkApp() {
                 <label className="block text-xs font-semibold text-slate-700 mb-2.5">
                   Layout
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {(
                     [
                       { id: 'classic', label: 'Classic' },
                       { id: 'hero', label: 'Hero' },
                       { id: 'banner', label: 'Banner' },
-                      { id: 'cutout', label: 'Cutout' },
                       { id: 'shape', label: 'Shape' },
                     ] as { id: HeaderLayoutType; label: string }[]
                   ).map((layout) => {
@@ -3843,12 +3664,6 @@ export default function BioLinkApp() {
                               src={data.avatarUrl}
                               alt="Hero preview"
                               className="w-full h-full object-cover"
-                            />
-                          ) : layout.id === 'cutout' ? (
-                            <img
-                              src={data.avatarUrl}
-                              alt="Cutout preview"
-                              className="w-10 h-10 object-contain relative z-10"
                             />
                           ) : layout.id === 'shape' ? (
                             <img
@@ -3930,41 +3745,8 @@ export default function BioLinkApp() {
                 </div>
               )}
 
-              {(data.headerLayout === 'cutout' || data.headerLayout === 'shape') && (
+              {data.headerLayout === 'shape' && (
                 <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                  {data.headerLayout === 'cutout' && (
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-800">Cutout background</p>
-                        <p className="mt-0.5 text-[11px] text-slate-400">
-                          Menghapus warna latar yang menyerupai tepi foto secara otomatis.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAutomaticCutout}
-                        disabled={cutoutProcessing}
-                        className="shrink-0 rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-600 disabled:cursor-wait disabled:opacity-60"
-                      >
-                        {cutoutProcessing ? 'Memproses...' : 'Hapus Background'}
-                      </button>
-                      {(data.cutoutEnabled || data.avatarOriginalUrl !== data.avatarUrl) && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateDataWithHistory((prev) => ({
-                              ...prev,
-                              avatarUrl: prev.avatarOriginalUrl || prev.avatarUrl,
-                              cutoutEnabled: false,
-                            }))
-                          }
-                          className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
-                        >
-                          Kembalikan Foto
-                        </button>
-                      )}
-                    </div>
-                  )}
                   <div>
                     <p className="mb-2.5 text-xs font-semibold text-slate-800">Shape</p>
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
