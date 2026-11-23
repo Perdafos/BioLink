@@ -743,6 +743,7 @@ export default function BioLinkApp() {
   const [modalThumbnailUrl, setModalThumbnailUrl] = useState('');
   const [modalIconUrl, setModalIconUrl] = useState('');
   const [activeShareLink, setActiveShareLink] = useState<LinkItem | null>(null);
+  const [cutoutProcessing, setCutoutProcessing] = useState(false);
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -1239,72 +1240,40 @@ export default function BioLinkApp() {
   };
 
   const handleAutomaticCutout = () => {
-    if (!data.avatarUrl) return;
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxSize = 900;
-      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-      canvas.width = Math.round(image.width * scale);
-      canvas.height = Math.round(image.height * scale);
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      if (!context) return;
+    if (!data.avatarUrl || cutoutProcessing) return;
+    setCutoutProcessing(true);
+    showToast('Menghapus background, tunggu sebentar...');
 
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      const dataPixels = pixels.data;
-      const sampleSize = 12;
-      let red = 0;
-      let green = 0;
-      let blue = 0;
-      let count = 0;
-
-      const sampleCorner = (x: number, y: number) => {
-        const index = (y * canvas.width + x) * 4;
-        red += dataPixels[index];
-        green += dataPixels[index + 1];
-        blue += dataPixels[index + 2];
-        count++;
-      };
-
-      for (let offset = 0; offset < sampleSize; offset++) {
-        sampleCorner(offset, 0);
-        sampleCorner(canvas.width - 1 - offset, 0);
-        sampleCorner(offset, canvas.height - 1);
-        sampleCorner(canvas.width - 1 - offset, canvas.height - 1);
-      }
-      red /= count;
-      green /= count;
-      blue /= count;
-
-      for (let index = 0; index < dataPixels.length; index += 4) {
-        const distance =
-          Math.abs(dataPixels[index] - red) +
-          Math.abs(dataPixels[index + 1] - green) +
-          Math.abs(dataPixels[index + 2] - blue);
-        if (distance < 82) dataPixels[index + 3] = 0;
-      }
-      context.putImageData(pixels, 0, 0);
-
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const cutoutUrl = URL.createObjectURL(blob);
-        const cutoutImage = new Image();
-        cutoutImage.onload = () => {
+    void (async () => {
+      try {
+        const { removeBackground } = await import('@imgly/background-removal');
+        const blob = await removeBackground(data.avatarUrl, {
+          model: 'isnet',
+          output: {
+            format: 'image/png',
+            quality: 1,
+          },
+        });
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result !== 'string') return;
           updateDataWithHistory((prev) => ({
             ...prev,
-            avatarUrl: canvas.toDataURL('image/png'),
+            avatarUrl: reader.result as string,
             cutoutEnabled: true,
             headerLayout: 'cutout',
           }));
-          URL.revokeObjectURL(cutoutUrl);
           showToast('Background profil berhasil dihapus');
         };
-        cutoutImage.src = cutoutUrl;
-      }, 'image/png');
-    };
-    image.onerror = () => showToast('Gagal memproses foto profil');
-    image.src = data.avatarUrl;
+        reader.onerror = () => showToast('Gagal mengubah hasil cutout');
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('Gagal menghapus background:', error);
+        showToast('Gagal menghapus background. Coba unggah foto dengan kualitas lebih baik.');
+      } finally {
+        setCutoutProcessing(false);
+      }
+    })();
   };
 
   // --- STEP 0: LOGIN & REGISTER SUPABASE ---
@@ -3861,9 +3830,10 @@ export default function BioLinkApp() {
                       <button
                         type="button"
                         onClick={handleAutomaticCutout}
-                        className="shrink-0 rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-600"
+                        disabled={cutoutProcessing}
+                        className="shrink-0 rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-600 disabled:cursor-wait disabled:opacity-60"
                       >
-                        Hapus Background
+                        {cutoutProcessing ? 'Memproses...' : 'Hapus Background'}
                       </button>
                     </div>
                   )}
