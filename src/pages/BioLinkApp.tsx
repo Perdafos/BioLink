@@ -1154,6 +1154,8 @@ export default function BioLinkApp() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [accountName, setAccountName] = useState('John Doe');
+  const [accountAvatar, setAccountAvatar] = useState(INITIAL_STATE.avatarUrl);
   const [authProvider, setAuthProvider] = useState('email');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1325,7 +1327,9 @@ export default function BioLinkApp() {
     uid: string,
     email: string,
     fallbackUsername?: string,
-    isNewAccount = false
+    isNewAccount = false,
+    accountDisplayName?: string,
+    accountImageUrl?: string,
   ) => {
     isHydratingRef.current = true;
     try {
@@ -1362,6 +1366,16 @@ export default function BioLinkApp() {
       if (profile) {
         setActiveProfileId(profile.id);
         window.localStorage.setItem('biolink-active-profile-id', profile.id);
+        setAccountName(
+          sanitizeLegacyProfileValue(
+            accountDisplayName ||
+              profile.display_name ||
+              profile.username ||
+              email.split('@')[0],
+            'displayName',
+          ),
+        );
+        setAccountAvatar(accountImageUrl || profile.avatar_url || INITIAL_STATE.avatarUrl);
         setData({
           accountEmail: email,
           username: sanitizeLegacyProfileValue(profile.username, 'username'),
@@ -1654,7 +1668,15 @@ export default function BioLinkApp() {
       if (session?.user) {
         setUserId(session.user.id);
         setAuthProvider(session.user.app_metadata?.provider || 'email');
-        await loadUserProfile(session.user.id, session.user.email || '');
+        const metadata = session.user.user_metadata || {};
+        await loadUserProfile(
+          session.user.id,
+          session.user.email || '',
+          undefined,
+          false,
+          metadata.full_name || metadata.name || metadata.display_name,
+          metadata.avatar_url || metadata.picture,
+        );
       }
       if (mounted) setAuthLoading(false);
     });
@@ -1663,11 +1685,22 @@ export default function BioLinkApp() {
       if (event === 'SIGNED_IN' && session?.user) {
         setUserId(session.user.id);
         setAuthProvider(session.user.app_metadata?.provider || 'email');
-        await loadUserProfile(session.user.id, session.user.email || '');
+        const metadata = session.user.user_metadata || {};
+        await loadUserProfile(
+          session.user.id,
+          session.user.email || '',
+          undefined,
+          false,
+          metadata.full_name || metadata.name || metadata.display_name,
+          metadata.avatar_url || metadata.picture,
+        );
         setAuthLoading(false);
       } else if (event === 'SIGNED_OUT') {
         setUserId(null);
         setData(INITIAL_STATE);
+        setAccountName('John Doe');
+        setAccountAvatar(INITIAL_STATE.avatarUrl);
+        window.localStorage.removeItem('biolink-active-profile-id');
         setStep('login');
       }
     });
@@ -2948,13 +2981,13 @@ export default function BioLinkApp() {
                 className="flex min-w-0 items-center gap-2.5 rounded-xl text-left"
               >
                 <img
-                  src={data.avatarUrl}
+                  src={accountAvatar}
                   alt=""
                   className="size-8 shrink-0 rounded-full object-cover"
                 />
                 <div className="min-w-0 w-[120px]">
-                  <p className="truncate text-xs font-bold text-slate-900">{data.displayName}</p>
-                  <p className="truncate text-[10px] text-slate-400">biolink.id/{data.username}</p>
+                  <p className="truncate text-xs font-bold text-slate-900">{accountName}</p>
+                  <p className="truncate text-[10px] text-slate-400">{data.accountEmail}</p>
                 </div>
                 <ChevronDown className="size-4 text-slate-400" />
               </button>
@@ -2963,30 +2996,6 @@ export default function BioLinkApp() {
                   onMouseLeave={() => setShowProfileMenu(false)}
                   className="absolute left-0 top-11 w-52 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg z-50"
                 >
-                  <div className="max-h-48 space-y-1 overflow-y-auto border-b border-slate-100 pb-2 mb-1">
-                    {profiles.map((profile) => (
-                      <button
-                        key={profile.id}
-                        type="button"
-                        onClick={() => void switchProfile(profile.id)}
-                        className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left hover:bg-slate-50 ${
-                          profile.id === activeProfileId ? 'bg-violet-50' : ''
-                        }`}
-                      >
-                        <img
-                          src={profile.avatar_url || INITIAL_STATE.avatarUrl}
-                          alt=""
-                          className="size-7 rounded-full object-cover"
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-bold text-slate-900">
-                            {profile.display_name || profile.username}
-                          </p>
-                          <p className="truncate text-[10px] text-slate-400">/{profile.username}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
                   <button
                     type="button"
                     onClick={() => void createProfile()}
@@ -4393,11 +4402,11 @@ export default function BioLinkApp() {
             className="flex items-center gap-2.5 bg-white border border-slate-200 hover:border-slate-300 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold text-slate-800 shadow-2xs transition-colors cursor-pointer"
           >
             <img
-              src={data.avatarUrl}
-              alt={data.displayName}
+              src={accountAvatar}
+              alt={accountName}
               className="w-6 h-6 rounded-full object-cover bg-sky-100"
             />
-            <span className="max-w-[160px] sm:max-w-[220px] truncate">{data.displayName}</span>
+            <span className="max-w-[160px] sm:max-w-[220px] truncate">{accountName}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
@@ -4407,7 +4416,7 @@ export default function BioLinkApp() {
               className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-slate-200 rounded-2xl shadow-lg p-2 z-40 space-y-1"
             >
               <div className="px-3 py-2 border-b border-slate-100">
-                <p className="text-xs font-bold text-slate-900 truncate">{data.displayName}</p>
+                <p className="text-xs font-bold text-slate-900 truncate">{accountName}</p>
                 <p className="text-[11px] text-slate-400 truncate">
                   {data.accountEmail || `biolink.id/${data.username}`}
                 </p>
