@@ -40,6 +40,24 @@ import {
   PanelLeft,
   Download,
   Phone,
+  Eye,
+  EyeOff,
+  Briefcase,
+  Code2,
+  FolderGit2,
+  ShoppingBag,
+  Sparkles,
+  BookOpen,
+  Camera,
+  Music,
+  Gamepad2,
+  Heart,
+  Star,
+  Send,
+  FileText,
+  Coffee,
+  Rocket,
+  GripVertical,
 } from 'lucide-react';
 import { BrandMark } from '../components/atoms/BrandMark';
 import { ToastNotification } from '../components/molecules/ToastNotification';
@@ -233,7 +251,10 @@ function getProfileShapeStyle(shape: ProfileShape): React.CSSProperties {
     case 'rounded':
       return { borderRadius: '18%' };
     case 'burst':
-      return { clipPath: 'polygon(50% 0%,61% 18%,78% 8%,82% 28%,100% 31%,88% 50%,100% 69%,82% 72%,78% 92%,61% 82%,50% 100%,39% 82%,22% 92%,18% 72%,0% 69%,12% 50%,0% 31%,18% 28%,22% 8%,39% 18%)' };
+      return {
+        clipPath:
+          'polygon(50% 0%,61% 18%,78% 8%,82% 28%,100% 31%,88% 50%,100% 69%,82% 72%,78% 92%,61% 82%,50% 100%,39% 82%,22% 92%,18% 72%,0% 69%,12% 50%,0% 31%,18% 28%,22% 8%,39% 18%)',
+      };
     default:
       return { borderRadius: '50%' };
   }
@@ -390,6 +411,40 @@ const OPEN_STICKERS = [
   'https://openstickers.craftwork.design/img/shape-3.png',
 ];
 
+const LINK_LUCIDE_ICONS: Record<string, { label: string; icon: React.FC<{ className?: string }> }> = {
+  globe: { label: 'Website', icon: Globe },
+  briefcase: { label: 'Portfolio', icon: Briefcase },
+  code: { label: 'Code', icon: Code2 },
+  github: { label: 'Project', icon: FolderGit2 },
+  shop: { label: 'Shop', icon: ShoppingBag },
+  sparkles: { label: 'Featured', icon: Sparkles },
+  book: { label: 'Article', icon: BookOpen },
+  camera: { label: 'Photo', icon: Camera },
+  music: { label: 'Music', icon: Music },
+  game: { label: 'Gaming', icon: Gamepad2 },
+  youtube: { label: 'Video', icon: Youtube },
+  instagram: { label: 'Instagram', icon: Instagram },
+  mail: { label: 'Email', icon: Mail },
+  chat: { label: 'Chat', icon: MessageCircle },
+  send: { label: 'Contact', icon: Send },
+  file: { label: 'Document', icon: FileText },
+  coffee: { label: 'Support', icon: Coffee },
+  rocket: { label: 'Launch', icon: Rocket },
+  star: { label: 'Star', icon: Star },
+  heart: { label: 'Favorite', icon: Heart },
+};
+
+const renderLinkIcon = (link: LinkItem, sizeClass = 'w-4 h-4') => {
+  const value = link.iconUrl?.trim();
+  if (value?.startsWith('lucide:')) {
+    const key = value.replace('lucide:', '');
+    const entry = LINK_LUCIDE_ICONS[key];
+    const IconComponent = entry ? entry.icon : Link2;
+    return <IconComponent className={sizeClass} />;
+  }
+  return null;
+};
+
 // --- REUSABLE LIVE PHONE PREVIEW COMPONENT ---
 
 const LivePhoneMockup: React.FC<{
@@ -415,482 +470,533 @@ const LivePhoneMockup: React.FC<{
   onStickerDelete,
   stickersDraggable = false,
 }) => {
-  const [selectedStickerIndex, setSelectedStickerIndex] = useState<number | null>(null);
-  const lightBg = isColorLight(data.wallpaperColor);
-  const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
-  const subTextColor = lightBg ? '#475569' : '#E2E8F0';
-  const requestedTitleColor = data.titleColor || autoTextColor;
-  const resolvedTitleColor = hasGoodContrast(requestedTitleColor, data.wallpaperColor)
-    ? requestedTitleColor
-    : autoTextColor;
+    const [selectedStickerIndex, setSelectedStickerIndex] = useState<number | null>(null);
+    const [expandedPreviewIds, setExpandedPreviewIds] = useState<Record<string, boolean>>({});
 
-  const fontClass =
-    data.fontFamily === 'JetBrains Mono'
-      ? 'font-mono'
-      : data.fontFamily === 'Plus Jakarta Sans'
-      ? 'font-sans tracking-tight'
-      : 'font-sans';
+    const toggleLinkPreview = (id: string) => {
+      setExpandedPreviewIds((prev) => ({
+        ...prev,
+        [id]: !prev[id],
+      }));
+    };
 
-  const activeLinks = data.links.filter((l) => l.active);
+    const lightBg = isColorLight(data.wallpaperColor);
+    const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
+    const subTextColor = lightBg ? '#475569' : '#E2E8F0';
+    const requestedTitleColor = data.titleColor || autoTextColor;
+    const resolvedTitleColor = hasGoodContrast(requestedTitleColor, data.wallpaperColor)
+      ? requestedTitleColor
+      : autoTextColor;
 
-  return (
-    <div
-      data-live-phone
-      onPointerDown={() => {
-        if (stickersDraggable) setSelectedStickerIndex(null);
-      }}
-      style={{
-        backgroundColor: data.wallpaperColor,
-        transform: tilted3D
-          ? 'perspective(1100px) rotateY(-14deg) rotateX(4deg) rotateZ(-2deg)'
-          : undefined,
-      }}
-      className={`relative overflow-hidden transition-all duration-300 select-none ${fontClass} ${
-        compact
+    const fontClass =
+      data.fontFamily === 'JetBrains Mono'
+        ? 'font-mono'
+        : data.fontFamily === 'Plus Jakarta Sans'
+          ? 'font-sans tracking-tight'
+          : 'font-sans';
+
+    const activeLinks = data.links.filter((l) => l.active);
+
+    return (
+      <div
+        data-live-phone
+        onPointerDown={() => {
+          if (stickersDraggable) setSelectedStickerIndex(null);
+        }}
+        style={{
+          backgroundColor: data.wallpaperColor,
+          transform: tilted3D
+            ? 'perspective(1100px) rotateY(-14deg) rotateX(4deg) rotateZ(-2deg)'
+            : undefined,
+        }}
+        className={`relative overflow-hidden transition-all duration-300 select-none ${fontClass} ${compact
           ? 'w-[230px] h-[440px] rounded-[34px] border-[6px] border-neutral-900 shadow-xl'
           : 'w-[325px] sm:w-[345px] min-h-[630px] max-h-[76vh] rounded-[40px] border border-slate-200/80 shadow-[0_12px_40px_rgba(15,23,42,0.08)]'
-      }`}
-    >
+          }`}
+      >
+        {/* Scrollable Phone Interior */}
+        <div className="h-full overflow-y-auto flex flex-col justify-between pb-6">
+          {data.stickers.map((sticker, index) => (
+            <div
+              key={`${sticker.src}-${index}`}
+              onPointerDown={(event) => {
+                if (!stickersDraggable) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setSelectedStickerIndex(index);
+                event.currentTarget.setPointerCapture(event.pointerId);
 
-      {/* Scrollable Phone Interior */}
-      <div className="h-full overflow-y-auto flex flex-col justify-between pb-6">
-        {data.stickers.map((sticker, index) => (
-          <div
-            key={`${sticker.src}-${index}`}
-            onPointerDown={(event) => {
-              if (!stickersDraggable) return;
-              event.preventDefault();
-              event.stopPropagation();
-              setSelectedStickerIndex(index);
-              event.currentTarget.setPointerCapture(event.pointerId);
+                const phone = event.currentTarget.closest('[data-live-phone]')?.getBoundingClientRect();
+                const stickerRect = event.currentTarget.getBoundingClientRect();
+                if (!phone) return;
+                event.currentTarget.dataset.dragOffsetX = String(
+                  event.clientX - (stickerRect.left + stickerRect.width / 2)
+                );
+                event.currentTarget.dataset.dragOffsetY = String(
+                  event.clientY - (stickerRect.top + stickerRect.height / 2)
+                );
+              }}
+              onPointerMove={(event) => {
+                if (!stickersDraggable || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+                const phone = event.currentTarget.closest('[data-live-phone]')?.getBoundingClientRect();
+                if (!phone) return;
+                const offsetX = Number(event.currentTarget.dataset.dragOffsetX || 0);
+                const offsetY = Number(event.currentTarget.dataset.dragOffsetY || 0);
+                const centerX = event.clientX - offsetX;
+                const centerY = event.clientY - offsetY;
+                const x = ((centerX - phone.left) / phone.width) * 100;
+                const y = ((centerY - phone.top) / phone.height) * 100;
+                onStickerMove?.(
+                  index,
+                  Math.max(4, Math.min(96, x)),
+                  Math.max(4, Math.min(96, y))
+                );
+              }}
+              onPointerUp={(event) => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+              }}
+              className={`absolute z-20 grid size-12 place-items-center ${stickersDraggable ? 'cursor-grab touch-none active:cursor-grabbing' : 'pointer-events-none'
+                }`}
+              style={{
+                left: `${sticker.x}%`,
+                top: `${sticker.y}%`,
+                transform: `translate(-50%, -50%) scale(${sticker.scale})`,
+              }}
+            >
+              {sticker.src.startsWith('data:image/') || sticker.src.startsWith('http') ? (
+                <img src={sticker.src} alt="" className="size-full object-contain drop-shadow-md" draggable={false} />
+              ) : (
+                <span className="text-[32px]">{sticker.src}</span>
+              )}
 
-              const phone = event.currentTarget.closest('[data-live-phone]')?.getBoundingClientRect();
-              const stickerRect = event.currentTarget.getBoundingClientRect();
-              if (!phone) return;
-              event.currentTarget.dataset.dragOffsetX = String(
-                event.clientX - (stickerRect.left + stickerRect.width / 2)
-              );
-              event.currentTarget.dataset.dragOffsetY = String(
-                event.clientY - (stickerRect.top + stickerRect.height / 2)
-              );
-            }}
-            onPointerMove={(event) => {
-              if (!stickersDraggable || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-              const phone = event.currentTarget.closest('[data-live-phone]')?.getBoundingClientRect();
-              if (!phone) return;
-              const offsetX = Number(event.currentTarget.dataset.dragOffsetX || 0);
-              const offsetY = Number(event.currentTarget.dataset.dragOffsetY || 0);
-              const centerX = event.clientX - offsetX;
-              const centerY = event.clientY - offsetY;
-              const x = ((centerX - phone.left) / phone.width) * 100;
-              const y = ((centerY - phone.top) / phone.height) * 100;
-              onStickerMove?.(
-                index,
-                Math.max(4, Math.min(96, x)),
-                Math.max(4, Math.min(96, y))
-              );
-            }}
-            onPointerUp={(event) => {
-              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                event.currentTarget.releasePointerCapture(event.pointerId);
-              }
-            }}
-            className={`absolute z-20 grid size-12 place-items-center ${
-              stickersDraggable ? 'cursor-grab touch-none active:cursor-grabbing' : 'pointer-events-none'
-            }`}
-            style={{
-              left: `${sticker.x}%`,
-              top: `${sticker.y}%`,
-              transform: `translate(-50%, -50%) scale(${sticker.scale})`,
-            }}
-          >
-            {sticker.src.startsWith('data:image/') || sticker.src.startsWith('http') ? (
-              <img src={sticker.src} alt="" className="size-full object-contain drop-shadow-md" draggable={false} />
-            ) : (
-              <span className="text-[32px]">{sticker.src}</span>
-            )}
-
-            {stickersDraggable && selectedStickerIndex === index && (
-              <>
-                <div className="pointer-events-none absolute -inset-2 border border-dashed border-sky-500">
-                  {[
-                    'left-[-5px] top-[-5px]',
-                    'right-[-5px] top-[-5px]',
-                    'bottom-[-5px] left-[-5px]',
-                    'bottom-[-5px] right-[-5px]',
-                  ].map((position, handleIndex) => (
-                    <span
-                      key={position}
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                        event.currentTarget.setPointerCapture(event.pointerId);
-                        const stickerRect = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
-                        if (!stickerRect) return;
-                        const centerX = stickerRect.left + stickerRect.width / 2;
-                        const centerY = stickerRect.top + stickerRect.height / 2;
-                        event.currentTarget.dataset.startDistance = String(
-                          Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY))
-                        );
-                        event.currentTarget.dataset.startScale = String(sticker.scale);
-                        event.currentTarget.dataset.handleIndex = String(handleIndex);
-                      }}
-                      onPointerMove={(event) => {
-                        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-                        const stickerRect = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
-                        if (!stickerRect) return;
-                        const centerX = stickerRect.left + stickerRect.width / 2;
-                        const centerY = stickerRect.top + stickerRect.height / 2;
-                        const distance = Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY));
-                        const startDistance = Number(event.currentTarget.dataset.startDistance || distance);
-                        const startScale = Number(event.currentTarget.dataset.startScale || sticker.scale);
-                        onStickerScale?.(
-                          index,
-                          Math.max(0.6, Math.min(2.4, startScale * (distance / startDistance)))
-                        );
-                      }}
-                      onPointerUp={(event) => {
-                        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                          event.currentTarget.releasePointerCapture(event.pointerId);
-                        }
-                      }}
-                      className={`pointer-events-auto absolute size-2.5 rounded-sm border border-sky-600 bg-white ${position}`}
+              {stickersDraggable && selectedStickerIndex === index && (
+                <>
+                  <div className="pointer-events-none absolute -inset-2 border border-dashed border-sky-500">
+                    {[
+                      'left-[-5px] top-[-5px]',
+                      'right-[-5px] top-[-5px]',
+                      'bottom-[-5px] left-[-5px]',
+                      'bottom-[-5px] right-[-5px]',
+                    ].map((position, handleIndex) => (
+                      <span
+                        key={position}
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                          const stickerRect = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
+                          if (!stickerRect) return;
+                          const centerX = stickerRect.left + stickerRect.width / 2;
+                          const centerY = stickerRect.top + stickerRect.height / 2;
+                          event.currentTarget.dataset.startDistance = String(
+                            Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY))
+                          );
+                          event.currentTarget.dataset.startScale = String(sticker.scale);
+                          event.currentTarget.dataset.handleIndex = String(handleIndex);
+                        }}
+                        onPointerMove={(event) => {
+                          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+                          const stickerRect = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
+                          if (!stickerRect) return;
+                          const centerX = stickerRect.left + stickerRect.width / 2;
+                          const centerY = stickerRect.top + stickerRect.height / 2;
+                          const distance = Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY));
+                          const startDistance = Number(event.currentTarget.dataset.startDistance || distance);
+                          const startScale = Number(event.currentTarget.dataset.startScale || sticker.scale);
+                          onStickerScale?.(
+                            index,
+                            Math.max(0.6, Math.min(2.4, startScale * (distance / startDistance)))
+                          );
+                        }}
+                        onPointerUp={(event) => {
+                          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                            event.currentTarget.releasePointerCapture(event.pointerId);
+                          }
+                        }}
+                        className={`pointer-events-auto absolute size-2.5 rounded-sm border border-sky-600 bg-white ${position}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedStickerIndex(null);
+                      onStickerDelete?.(index);
+                    }}
+                    className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] grid size-8 -translate-x-1/2 place-items-center rounded-full bg-white text-rose-500 shadow-md ring-1 ring-slate-200"
+                    title="Hapus sticker"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+          <div>
+            {/* HEADER LAYOUT: CLASSIC / BANNER / HERO */}
+            {data.headerLayout === 'banner' && (
+              <div
+                className="w-full h-28 relative overflow-hidden"
+                style={{ backgroundColor: data.bannerColor }}
+              >
+                {data.bannerUrl &&
+                  (data.bannerUrl.startsWith('data:video/') ? (
+                    <video
+                      src={data.bannerUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={data.bannerUrl}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
                     />
                   ))}
-                </div>
-                <button
-                  type="button"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSelectedStickerIndex(null);
-                    onStickerDelete?.(index);
-                  }}
-                  className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] grid size-8 -translate-x-1/2 place-items-center rounded-full bg-white text-rose-500 shadow-md ring-1 ring-slate-200"
-                  title="Hapus sticker"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </>
+              </div>
             )}
-          </div>
-        ))}
-        <div>
-          {/* HEADER LAYOUT: CLASSIC / BANNER / HERO */}
-          {data.headerLayout === 'banner' && (
-            <div
-              className="w-full h-28 relative overflow-hidden"
-              style={{ backgroundColor: data.bannerColor }}
-            >
-              {data.bannerUrl &&
-                (data.bannerUrl.startsWith('data:video/') ? (
-                  <video
-                    src={data.bannerUrl}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <img
-                    src={data.bannerUrl}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ))}
-            </div>
-          )}
 
-          {data.headerLayout === 'hero' ? (
-            <div className="relative w-full h-56 overflow-hidden">
-              <img
-                src={data.avatarUrl}
-                alt={data.displayName}
-                className="w-full h-full object-cover"
-              />
-              <div
-                className="absolute inset-x-0 bottom-0 px-5 py-4 text-center"
-                style={{
-                  background: `linear-gradient(to top, ${data.wallpaperColor} 0%, ${data.wallpaperColor}F2 35%, ${data.wallpaperColor}00 100%)`,
-                }}
-              >
-                <h3 style={{ color: resolvedTitleColor }} className="font-bold text-base tracking-tight truncate">
+            {data.headerLayout === 'hero' ? (
+              <div className="relative w-full h-56 overflow-hidden">
+                <img
+                  src={data.avatarUrl}
+                  alt={data.displayName}
+                  className="w-full h-full object-cover"
+                />
+                <div
+                  className="absolute inset-x-0 bottom-0 px-5 py-4 text-center"
+                  style={{
+                    background: `linear-gradient(to top, ${data.wallpaperColor} 0%, ${data.wallpaperColor}F2 35%, ${data.wallpaperColor}00 100%)`,
+                  }}
+                >
+                  <h3 style={{ color: resolvedTitleColor }} className="font-bold text-base tracking-tight truncate">
+                    {data.displayName || 'Your Name'}
+                  </h3>
+                  {data.bio && (
+                    <p style={{ color: subTextColor }} className="text-[11px] line-clamp-2 mt-0.5">
+                      {data.bio}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : data.headerLayout === 'shape' ? (
+              <div className="px-6 pt-12 text-center">
+                <div
+                  className="w-24 h-24 mx-auto overflow-hidden border-[3px] border-white shadow-sm"
+                  style={getProfileShapeStyle(data.profileShape)}
+                >
+                  <img
+                    src={data.avatarUrl}
+                    alt={data.displayName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3
+                  style={{ color: resolvedTitleColor }}
+                  className="mt-3.5 font-bold text-base tracking-tight"
+                >
                   {data.displayName || 'Your Name'}
                 </h3>
                 {data.bio && (
-                  <p style={{ color: subTextColor }} className="text-[11px] line-clamp-2 mt-0.5">{data.bio}</p>
-                )}
-              </div>
-            </div>
-          ) : data.headerLayout === 'shape' ? (
-            <div className="px-6 pt-12 text-center">
-              <div
-                className="w-24 h-24 mx-auto overflow-hidden border-[3px] border-white shadow-sm"
-                style={getProfileShapeStyle(data.profileShape)}
-              >
-                <img
-                  src={data.avatarUrl}
-                  alt={data.displayName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <h3
-                style={{ color: resolvedTitleColor }}
-                className="mt-3.5 font-bold text-base tracking-tight"
-              >
-                {data.displayName || 'Your Name'}
-              </h3>
-              {data.bio && (
-                <p style={{ color: subTextColor }} className="mt-1.5 text-xs leading-relaxed max-w-[260px] mx-auto">
-                  {data.bio}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div
-              className={`px-6 text-center ${
-                data.headerLayout === 'banner' ? '-mt-11 relative z-10' : 'pt-12'
-              }`}
-            >
-              <div
-                className="w-20 h-20 mx-auto overflow-hidden border-[3px] border-white shadow-sm bg-sky-100"
-                style={getProfileShapeStyle(data.profileShape)}
-              >
-                <img
-                  src={data.avatarUrl}
-                  alt={data.displayName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <h3
-                style={{ color: resolvedTitleColor }}
-                className="mt-3.5 font-bold text-base tracking-tight"
-              >
-                {data.displayName || 'Your Name'}
-              </h3>
-
-              {skeletonMode ? (
-                <div className="mt-2 space-y-1.5 flex flex-col items-center">
-                  <div className="w-36 h-2 rounded-full bg-current opacity-20" />
-                  <div className="w-24 h-2 rounded-full bg-current opacity-15" />
-                </div>
-              ) : (
-                data.bio && (
-                  <p
-                    style={{ color: subTextColor }}
-                    className="mt-1.5 text-xs leading-relaxed max-w-[260px] mx-auto"
-                  >
+                  <p style={{ color: subTextColor }} className="mt-1.5 text-xs leading-relaxed max-w-[260px] mx-auto">
                     {data.bio}
                   </p>
-                )
+                )}
+              </div>
+            ) : (
+              <div
+                className={`px-6 text-center ${data.headerLayout === 'banner' ? '-mt-11 relative z-10' : 'pt-12'
+                  }`}
+              >
+                <div
+                  className="w-20 h-20 mx-auto overflow-hidden border-[3px] border-white shadow-sm bg-sky-100"
+                  style={getProfileShapeStyle(data.profileShape)}
+                >
+                  <img
+                    src={data.avatarUrl}
+                    alt={data.displayName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <h3
+                  style={{ color: resolvedTitleColor }}
+                  className="mt-3.5 font-bold text-base tracking-tight"
+                >
+                  {data.displayName || 'Your Name'}
+                </h3>
+
+                {skeletonMode ? (
+                  <div className="mt-2 space-y-1.5 flex flex-col items-center">
+                    <div className="w-36 h-2 rounded-full bg-current opacity-20" />
+                    <div className="w-24 h-2 rounded-full bg-current opacity-15" />
+                  </div>
+                ) : (
+                  data.bio && (
+                    <p
+                      style={{ color: subTextColor }}
+                      className="mt-1.5 text-xs leading-relaxed max-w-[260px] mx-auto"
+                    >
+                      {data.bio}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* SOCIAL ICONS ROW */}
+            <div
+              style={{ color: autoTextColor }}
+              className="flex items-center justify-center gap-3.5 mt-4 px-5"
+            >
+              {data.socials.instagram && (
+                <a
+                  href={data.socials.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <Instagram className="w-4 h-4" />
+                </a>
+              )}
+              {data.socials.tiktok && (
+                <a
+                  href={data.socials.tiktok}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <Music2 className="w-4 h-4" />
+                </a>
+              )}
+              {data.socials.whatsapp && (
+                <a
+                  href={
+                    data.socials.whatsapp.startsWith('http')
+                      ? data.socials.whatsapp
+                      : `https://wa.me/${data.socials.whatsapp.replace(/[^0-9]/g, '')}`
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                </a>
+              )}
+              {data.socials.youtube && (
+                <a
+                  href={data.socials.youtube}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <Youtube className="w-4 h-4" />
+                </a>
+              )}
+              {data.socials.website && (
+                <a
+                  href={data.socials.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <Globe className="w-4 h-4" />
+                </a>
+              )}
+              {data.socials.email && (
+                <a
+                  href={
+                    data.socials.email.startsWith('mailto:')
+                      ? data.socials.email
+                      : `mailto:${data.socials.email}`
+                  }
+                  className="opacity-85 hover:opacity-100 transition-opacity"
+                >
+                  <Mail className="w-4 h-4" />
+                </a>
               )}
             </div>
-          )}
 
-          {/* SOCIAL ICONS ROW */}
-          <div
-            style={{ color: autoTextColor }}
-            className="flex items-center justify-center gap-3.5 mt-4 px-5"
-          >
-            {data.socials.instagram && (
-              <a
-                href={data.socials.instagram}
-                target="_blank"
-                rel="noreferrer"
-                className="opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-            )}
-            {data.socials.tiktok && (
-              <a
-                href={data.socials.tiktok}
-                target="_blank"
-                rel="noreferrer"
-                className="opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <Music2 className="w-4 h-4" />
-              </a>
-            )}
-            {data.socials.whatsapp && (
-              <a
-                href={
-                  data.socials.whatsapp.startsWith('http')
-                    ? data.socials.whatsapp
-                    : `https://wa.me/${data.socials.whatsapp.replace(/[^0-9]/g, '')}`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </a>
-            )}
-            {data.socials.youtube && (
-              <a
-                href={data.socials.youtube}
-                target="_blank"
-                rel="noreferrer"
-                className="opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <Youtube className="w-4 h-4" />
-              </a>
-            )}
-            {data.socials.website && (
-              <a
-                href={data.socials.website}
-                target="_blank"
-                rel="noreferrer"
-                className="opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <Globe className="w-4 h-4" />
-              </a>
-            )}
-            {data.socials.email && (
-              <a
-                href={data.socials.email.startsWith('mailto:')
-                  ? data.socials.email
-                  : `mailto:${data.socials.email}`}
-                className="opacity-85 hover:opacity-100 transition-opacity"
-              >
-                <Mail className="w-4 h-4" />
-              </a>
-            )}
-          </div>
+            {/* LINKS STACK */}
+            <div className="px-5 mt-5 space-y-3">
+              {skeletonMode ? (
+                <>
+                  {[1, 2, 3].map((item) => (
+                    <div
+                      key={item}
+                      style={{
+                        backgroundColor: data.buttonColor,
+                        opacity: 0.85,
+                      }}
+                      className="w-full h-11 rounded-full flex items-center justify-end px-4"
+                    >
+                      <MoreVertical
+                        style={{ color: data.buttonTextColor }}
+                        className="w-3.5 h-3.5 opacity-60"
+                      />
+                    </div>
+                  ))}
+                </>
+              ) : (
+                activeLinks.map((link) => {
+                  const hasPreview = Boolean(getLinkPreviewUrl(link));
+                  const isPreviewOpen = Boolean(expandedPreviewIds[link.id]);
 
-          {/* LINKS STACK */}
-          <div className="px-5 mt-5 space-y-3">
-            {skeletonMode ? (
-              <>
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    style={{
-                      backgroundColor: data.buttonColor,
-                      opacity: 0.85,
-                    }}
-                    className="w-full h-11 rounded-full flex items-center justify-end px-4"
-                  >
-                    <MoreVertical
-                      style={{ color: data.buttonTextColor }}
-                      className="w-3.5 h-3.5 opacity-60"
-                    />
-                  </div>
-                ))}
-              </>
-            ) : (
-              activeLinks.map((link) => {
-                const buttonStyles: React.CSSProperties =
-                  data.buttonVariant === 'solid'
-                    ? {
+                  const buttonStyles: React.CSSProperties =
+                    data.buttonVariant === 'solid'
+                      ? {
                         backgroundColor: data.buttonColor,
                         color: data.buttonTextColor,
                         borderColor: data.buttonColor,
                       }
-                    : data.buttonVariant === 'outline'
-                    ? {
-                        backgroundColor: 'transparent',
-                        color: autoTextColor,
-                        borderColor: autoTextColor,
-                      }
-                    : {
-                        backgroundColor: lightBg ? '#F1F5F9' : 'rgba(255,255,255,0.14)',
-                        color: autoTextColor,
-                        borderColor: 'transparent',
-                      };
+                      : data.buttonVariant === 'outline'
+                        ? {
+                          backgroundColor: 'transparent',
+                          color: autoTextColor,
+                          borderColor: autoTextColor,
+                        }
+                        : {
+                          backgroundColor: lightBg ? '#F1F5F9' : 'rgba(255,255,255,0.14)',
+                          color: autoTextColor,
+                          borderColor: 'transparent',
+                        };
 
-                return (
-                  <div
-                    key={link.id}
-                    style={buttonStyles}
-                    className={`group relative w-full border overflow-hidden transition-transform duration-150 hover:scale-[1.015] active:scale-[0.99] ${
-                      getLinkPreviewUrl(link) ? 'rounded-2xl' : 'rounded-full'
-                    }`}
-                  >
-                    <div className="min-h-[48px] px-3.5 py-2.5 flex items-center">
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() => onLinkClick?.(link.id)}
-                        className="min-w-0 flex-1 flex items-center gap-2.5"
-                      >
-                        {getLinkIconUrl(link) ? (
-                          <img
-                            src={getLinkIconUrl(link)!}
-                            alt=""
-                            className="w-8 h-8 rounded-lg object-cover bg-white/80 shrink-0"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-                            <Link2 className="w-4 h-4" />
+                  return (
+                    <div
+                      key={link.id}
+                      style={buttonStyles}
+                      className={`group relative w-full border overflow-hidden transition-[border-radius,transform] duration-300 ease-out hover:scale-[1.015] active:scale-[0.99] ${hasPreview && isPreviewOpen ? 'rounded-2xl' : 'rounded-[24px]'
+                        }`}
+                    >
+                      <div className="min-h-[48px] px-3.5 py-2.5 flex items-center">
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => onLinkClick?.(link.id)}
+                          className="min-w-0 flex-1 flex items-center gap-2.5"
+                        >
+                          {renderLinkIcon(link) ? (
+                            <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                              {renderLinkIcon(link, 'w-4 h-4')}
+                            </span>
+                          ) : getLinkIconUrl(link) ? (
+                            <img
+                              src={getLinkIconUrl(link)!}
+                              alt=""
+                              className="w-8 h-8 rounded-full object-cover bg-white/80 shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                              <Link2 className="w-4 h-4" />
+                            </span>
+                          )}
+                          <span className="min-w-0 flex-1 text-center px-1 leading-snug line-clamp-2 text-xs font-medium">
+                            {link.title}
                           </span>
-                        )}
-                        <span className="min-w-0 flex-1 text-center px-1 leading-snug line-clamp-2 text-xs font-medium">
-                          {link.title}
-                        </span>
-                      </a>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onShareLink?.(link);
-                        }}
-                        className="w-8 h-8 ml-1 shrink-0 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-white/10 transition-colors cursor-pointer"
-                        title="Share link"
-                        aria-label={`Bagikan ${link.title}`}
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    {getLinkPreviewUrl(link) && (
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() => onLinkClick?.(link.id)}
-                        className="block"
-                      >
-                        <LinkPreviewImage
-                          link={link}
-                          className="w-full h-32 object-cover"
-                        />
-                      </a>
-                    )}
-                  </div>
-                );
-              })
-            )}
+                        </a>
 
-            {!skeletonMode && activeLinks.length === 0 && (
-              <div
-                style={{ color: subTextColor, borderColor: subTextColor }}
-                className="border border-dashed rounded-2xl p-5 text-center text-xs opacity-60"
-              >
-                Belum ada link aktif
+                        {hasPreview && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleLinkPreview(link.id);
+                            }}
+                            className="w-8 h-8 ml-1 shrink-0 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-white/10 transition-all duration-200 cursor-pointer"
+                            title={isPreviewOpen ? 'Sembunyikan preview' : 'Lihat preview web'}
+                            aria-label={
+                              isPreviewOpen
+                                ? `Sembunyikan preview ${link.title}`
+                                : `Lihat preview ${link.title}`
+                            }
+                          >
+                            <span
+                              className={`transition-transform duration-300 ${isPreviewOpen ? 'rotate-180 scale-110' : 'rotate-0 scale-100'
+                                }`}
+                            >
+                              {isPreviewOpen ? (
+                                <EyeOff className="w-3.5 h-3.5" />
+                              ) : (
+                                <Eye className="w-3.5 h-3.5" />
+                              )}
+                            </span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onShareLink?.(link);
+                          }}
+                          className="w-8 h-8 ml-0.5 shrink-0 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-white/10 transition-colors cursor-pointer"
+                          title="Share link"
+                          aria-label={`Bagikan ${link.title}`}
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {hasPreview && (
+                        <div
+                          aria-hidden={!isPreviewOpen}
+                          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${isPreviewOpen
+                            ? 'grid-rows-[1fr] opacity-100'
+                            : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+                            }`}
+                        >
+                          <div className="overflow-hidden">
+                            <a
+                              href={link.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              tabIndex={isPreviewOpen ? 0 : -1}
+                              onClick={() => onLinkClick?.(link.id)}
+                              className={`block border-t border-black/10 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${isPreviewOpen ? 'translate-y-0' : '-translate-y-2'
+                                }`}
+                            >
+                              <LinkPreviewImage link={link} className="w-full h-32 object-cover" />
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+
+              {!skeletonMode && activeLinks.length === 0 && (
+                <div
+                  style={{ color: subTextColor, borderColor: subTextColor }}
+                  className="border border-dashed rounded-2xl p-5 text-center text-xs opacity-60"
+                >
+                  Belum ada link aktif
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* BOTTOM LINKTREE-STYLE PILL CTA */}
+          <div className="mt-8 px-5 text-center space-y-2.5">
+            {data.showFooterBadge && (
+              <div className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-200 px-4 py-2 rounded-full text-[11px] font-semibold shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-sky-500" />
+                <span>Join {data.username || 'perdafos'} on BioLink</span>
               </div>
             )}
           </div>
         </div>
-
-        {/* BOTTOM LINKTREE-STYLE PILL CTA */}
-        <div className="mt-8 px-5 text-center space-y-2.5">
-          {data.showFooterBadge && (
-            <div className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-200 px-4 py-2 rounded-full text-[11px] font-semibold shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-sky-500" />
-              <span>Join {data.username || 'perdafos'} on BioLink</span>
-            </div>
-          )}
-          <p style={{ color: subTextColor }} className="text-[10px] opacity-65">
-            
-          </p>
-        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 // --- MAIN APPLICATION ---
 
@@ -943,6 +1049,10 @@ export default function BioLinkApp() {
   const [contactEmail, setContactEmail] = useState(data.accountEmail);
   const [showContactFields, setShowContactFields] = useState(false);
 
+  // Drag & Drop Link Reordering States
+  const [draggedLinkIndex, setDraggedLinkIndex] = useState<number | null>(null);
+  const [dragOverLinkIndex, setDragOverLinkIndex] = useState<number | null>(null);
+
   useEffect(() => {
     setBusinessCardName(data.displayName);
   }, [data.displayName]);
@@ -971,12 +1081,15 @@ export default function BioLinkApp() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem('biolink-business-card', JSON.stringify({
-      color: businessCardColor,
-      shareDetailsBack,
-      saveContactEnabled,
-      phone: contactPhone,
-    }));
+    window.localStorage.setItem(
+      'biolink-business-card',
+      JSON.stringify({
+        color: businessCardColor,
+        shareDetailsBack,
+        saveContactEnabled,
+        phone: contactPhone,
+      })
+    );
   }, [
     businessCardName,
     businessCardColor,
@@ -985,6 +1098,7 @@ export default function BioLinkApp() {
     contactPhone,
     contactEmail,
   ]);
+
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
@@ -1016,6 +1130,29 @@ export default function BioLinkApp() {
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const isHydratingRef = useRef<boolean>(false);
 
+  const linkIconInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleLinkIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Pilih file gambar untuk icon');
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      showToast('Ukuran icon maksimal 1 MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setModalIconUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => {
@@ -1035,10 +1172,7 @@ export default function BioLinkApp() {
 
   useEffect(() => {
     if (!data.username) return;
-    window.localStorage.setItem(
-      `biolink-audience-${data.username}`,
-      JSON.stringify(audienceList)
-    );
+    window.localStorage.setItem(`biolink-audience-${data.username}`, JSON.stringify(audienceList));
   }, [audienceList, data.username]);
 
   useEffect(() => {
@@ -1046,7 +1180,9 @@ export default function BioLinkApp() {
 
     let mounted = true;
 
-    supabase.rpc('get_public_profile', { p_username: PUBLIC_USERNAME }).maybeSingle()
+    supabase
+      .rpc('get_public_profile', { p_username: PUBLIC_USERNAME })
+      .maybeSingle()
       .then(({ data: profile, error }) => {
         if (!mounted) return;
 
@@ -1122,8 +1258,7 @@ export default function BioLinkApp() {
     if (!PUBLIC_USERNAME || !publicProfile) return;
 
     document.title =
-      publicProfile.seoTitle ||
-      `${publicProfile.displayName || publicProfile.username} - BioLink`;
+      publicProfile.seoTitle || `${publicProfile.displayName || publicProfile.username} - BioLink`;
 
     let descriptionMeta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (!descriptionMeta) {
@@ -1342,6 +1477,17 @@ export default function BioLinkApp() {
     });
   };
 
+  const handleReorderLinks = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    updateDataWithHistory((prev) => {
+      const updated = [...prev.links];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return { ...prev, links: updated };
+    });
+    showToast('Urutan link diperbarui');
+  };
+
   const handleUndo = () => {
     if (history.length === 0) return;
     const previous = history[history.length - 1];
@@ -1422,7 +1568,9 @@ export default function BioLinkApp() {
       contactEmail ? `EMAIL:${contactEmail}` : '',
       `URL:${getPublicProfileUrl(data.username)}`,
       'END:VCARD',
-    ].filter(Boolean).join('\r\n');
+    ]
+      .filter(Boolean)
+      .join('\r\n');
 
     const url = URL.createObjectURL(new Blob([vCard], { type: 'text/vcard;charset=utf-8' }));
     const anchor = document.createElement('a');
@@ -1453,7 +1601,6 @@ export default function BioLinkApp() {
 
     await handleCopyShareUrl();
   };
-
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1517,12 +1664,13 @@ export default function BioLinkApp() {
           bannerUrl: reader.result as string,
           headerLayout: 'banner',
         }));
-        showToast(file.type.startsWith('video/') ? 'Video banner diperbarui' : 'Gambar banner diperbarui');
+        showToast(
+          file.type.startsWith('video/') ? 'Video banner diperbarui' : 'Gambar banner diperbarui'
+        );
       }
     };
     reader.readAsDataURL(file);
   };
-
 
   // --- STEP 0: LOGIN & REGISTER SUPABASE ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -1539,7 +1687,6 @@ export default function BioLinkApp() {
           return;
         }
 
-        // Cek apakah username sudah dipakai
         const { data: usernameAvailable, error: usernameCheckError } = await supabase.rpc(
           'check_username_available',
           { p_username: cleanUser }
@@ -1641,10 +1788,9 @@ export default function BioLinkApp() {
       return;
     }
 
-    const { data: usernameAvailable, error } = await supabase.rpc(
-      'check_username_available',
-      { p_username: data.username }
-    );
+    const { data: usernameAvailable, error } = await supabase.rpc('check_username_available', {
+      p_username: data.username,
+    });
 
     if (error) {
       showToast(`Gagal memeriksa username: ${error.message}`);
@@ -1758,12 +1904,12 @@ export default function BioLinkApp() {
         links: prev.links.map((l) =>
           l.id === editingLink.id
             ? {
-                ...l,
-                title: modalTitle.trim(),
-                url: formatted,
-                thumbnailUrl: modalThumbnailUrl.trim() || undefined,
-                iconUrl: modalIconUrl.trim() || undefined,
-              }
+              ...l,
+              title: modalTitle.trim(),
+              url: formatted,
+              thumbnailUrl: modalThumbnailUrl.trim() || undefined,
+              iconUrl: modalIconUrl.trim() || undefined,
+            }
             : l
         ),
       }));
@@ -1813,7 +1959,9 @@ export default function BioLinkApp() {
         <div className="min-h-screen flex items-center justify-center px-6 text-center bg-white">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Halaman tidak ditemukan</h1>
-            <p className="text-sm text-slate-500 mt-2">{publicProfileError || 'Profil belum tersedia.'}</p>
+            <p className="text-sm text-slate-500 mt-2">
+              {publicProfileError || 'Profil belum tersedia.'}
+            </p>
           </div>
         </div>
       );
@@ -1889,7 +2037,10 @@ export default function BioLinkApp() {
                   type="button"
                   onClick={async () => {
                     if (navigator.share) {
-                      await navigator.share({ title: activeShareLink.title, url: activeShareLink.url });
+                      await navigator.share({
+                        title: activeShareLink.title,
+                        url: activeShareLink.url,
+                      });
                     } else {
                       navigator.clipboard?.writeText(activeShareLink.url);
                       showToast('Link disalin');
@@ -1947,7 +2098,6 @@ export default function BioLinkApp() {
     );
   }
 
-
   // ============================================================================
   // RENDER 2: LANGKAH 1 ONBOARDING - MASUKKAN LINK & SOSIAL MEDIA
   // ============================================================================
@@ -1990,10 +2140,30 @@ export default function BioLinkApp() {
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {[
-                  { key: 'instagram', label: 'Instagram', icon: Instagram, placeholder: 'https://instagram.com/...' },
-                  { key: 'tiktok', label: 'TikTok', icon: Music2, placeholder: 'https://tiktok.com/@...' },
-                  { key: 'youtube', label: 'YouTube', icon: Youtube, placeholder: 'https://youtube.com/@...' },
-                  { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://perdafos.my.id' },
+                  {
+                    key: 'instagram',
+                    label: 'Instagram',
+                    icon: Instagram,
+                    placeholder: 'https://instagram.com/...',
+                  },
+                  {
+                    key: 'tiktok',
+                    label: 'TikTok',
+                    icon: Music2,
+                    placeholder: 'https://tiktok.com/@...',
+                  },
+                  {
+                    key: 'youtube',
+                    label: 'YouTube',
+                    icon: Youtube,
+                    placeholder: 'https://youtube.com/@...',
+                  },
+                  {
+                    key: 'website',
+                    label: 'Website',
+                    icon: Globe,
+                    placeholder: 'https://perdafos.my.id',
+                  },
                   { key: 'email', label: 'Email', icon: Mail, placeholder: 'nama@email.com' },
                 ].map((soc) => {
                   const Icon = soc.icon;
@@ -2181,11 +2351,10 @@ export default function BioLinkApp() {
                       key={item.id}
                       type="button"
                       onClick={() => setData({ ...data, headerLayout: item.id })}
-                      className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                        selected
-                          ? 'border-sky-500 bg-sky-50 text-sky-700 font-semibold'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      }`}
+                      className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${selected
+                        ? 'border-sky-500 bg-sky-50 text-sky-700 font-semibold'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
                     >
                       <div className="w-full h-10 rounded-lg bg-slate-100 mb-2 overflow-hidden flex flex-col items-center justify-center relative">
                         {item.id === 'banner' && (
@@ -2218,9 +2387,8 @@ export default function BioLinkApp() {
                         type="button"
                         onClick={() => setData({ ...data, bannerColor: hex })}
                         style={{ backgroundColor: hex }}
-                        className={`w-6 h-6 rounded-full border-2 cursor-pointer ${
-                          data.bannerColor === hex ? 'border-slate-900 scale-110' : 'border-white'
-                        }`}
+                        className={`w-6 h-6 rounded-full border-2 cursor-pointer ${data.bannerColor === hex ? 'border-slate-900 scale-110' : 'border-white'
+                          }`}
                       />
                     ))}
                   </div>
@@ -2245,9 +2413,7 @@ export default function BioLinkApp() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Bio
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Bio</label>
                 <textarea
                   rows={3}
                   maxLength={160}
@@ -2323,22 +2489,20 @@ export default function BioLinkApp() {
               <button
                 type="button"
                 onClick={() => setColorOnboardingTab('wallpaper')}
-                className={`py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  colorOnboardingTab === 'wallpaper'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${colorOnboardingTab === 'wallpaper'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Wallpaper
               </button>
               <button
                 type="button"
                 onClick={() => setColorOnboardingTab('buttons')}
-                className={`py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  colorOnboardingTab === 'buttons'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
+                className={`py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${colorOnboardingTab === 'buttons'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+                  }`}
               >
                 Buttons
               </button>
@@ -2355,17 +2519,14 @@ export default function BioLinkApp() {
                       onClick={() => setData({ ...data, wallpaperColor: swatch.hex })}
                       title={swatch.name}
                       style={{ backgroundColor: swatch.hex }}
-                      className={`w-9 h-9 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
-                        isSelected
-                          ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
-                          : 'border-slate-300 hover:scale-105'
-                      }`}
+                      className={`w-9 h-9 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${isSelected
+                        ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
+                        : 'border-slate-300 hover:scale-105'
+                        }`}
                     >
                       {isSelected && (
                         <Check
-                          className={`w-4 h-4 ${
-                            swatch.darkText ? 'text-slate-900' : 'text-white'
-                          }`}
+                          className={`w-4 h-4 ${swatch.darkText ? 'text-slate-900' : 'text-white'}`}
                         />
                       )}
                     </button>
@@ -2401,15 +2562,12 @@ export default function BioLinkApp() {
                       }
                       title={swatch.name}
                       style={{ backgroundColor: swatch.bg }}
-                      className={`w-9 h-9 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
-                        isSelected
-                          ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
-                          : 'border-slate-300 hover:scale-105'
-                      }`}
+                      className={`w-9 h-9 rounded-full border transition-transform cursor-pointer flex items-center justify-center ${isSelected
+                        ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
+                        : 'border-slate-300 hover:scale-105'
+                        }`}
                     >
-                      {isSelected && (
-                        <Check style={{ color: swatch.text }} className="w-4 h-4" />
-                      )}
+                      {isSelected && <Check style={{ color: swatch.text }} className="w-4 h-4" />}
                     </button>
                   );
                 })}
@@ -2460,9 +2618,8 @@ export default function BioLinkApp() {
         <div className="text-center space-y-3">
           <BrandMark />
           <h1
-            className={`text-2xl sm:text-3xl font-bold tracking-tight leading-tight ${
-              lightCanvas ? 'text-slate-900' : 'text-white'
-            }`}
+            className={`text-2xl sm:text-3xl font-bold tracking-tight leading-tight ${lightCanvas ? 'text-slate-900' : 'text-white'
+              }`}
           >
             Looking good.
             <br />
@@ -2495,7 +2652,11 @@ export default function BioLinkApp() {
     const toolItems = [
       { label: 'Business cards', icon: UserSquare2, section: 'business-cards' as DashboardSection },
       { label: 'Social planner', icon: CalendarDays, section: 'social-planner' as DashboardSection },
-      { label: 'Instagram auto-reply', icon: Instagram, section: 'instagram-auto-reply' as DashboardSection },
+      {
+        label: 'Instagram auto-reply',
+        icon: Instagram,
+        section: 'instagram-auto-reply' as DashboardSection,
+      },
       { label: 'Link shortener', icon: ExternalLink, section: 'link-shortener' as DashboardSection },
     ];
 
@@ -2571,11 +2732,10 @@ export default function BioLinkApp() {
                   key={item.label}
                   type="button"
                   onClick={() => setDashboardSection(item.section)}
-                  className={`mb-0.5 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors ${
-                    dashboardSection === item.section
-                      ? 'bg-violet-50 text-violet-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
-                  }`}
+                  className={`mb-0.5 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors ${dashboardSection === item.section
+                    ? 'bg-violet-50 text-violet-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
+                    }`}
                 >
                   <Icon className="size-4" strokeWidth={1.8} />
                   <span className="flex-1 text-left">{item.label}</span>
@@ -2600,55 +2760,76 @@ export default function BioLinkApp() {
             })}
           </nav>
 
-          {Math.round([
-            Boolean(data.avatarUrl),
-            Boolean(data.displayName),
-            Boolean(data.username),
-            Boolean(data.bio),
-            data.links.length > 0,
-            Object.values(data.socials).some(Boolean),
-          ].filter(Boolean).length / 6 * 100) < 100 && (
-          <div className="m-3 mb-4 rounded-xl border border-slate-200 p-4">
-            <div className="mb-3 flex items-center gap-3">
-              <div className="relative grid size-12 place-items-center">
-                <svg viewBox="0 0 44 44" className="absolute inset-0 size-12 -rotate-90">
-                  <circle cx="22" cy="22" r="18" fill="none" stroke="#ede9fe" strokeWidth="5" />
-                  <circle cx="22" cy="22" r="18" fill="none" stroke="#8b5cf6" strokeWidth="5" strokeLinecap="round" strokeDasharray="56 113" />
-                </svg>
-                <span className="text-xs font-bold text-violet-600">
-                  {Math.round([
-                    Boolean(data.avatarUrl),
-                    Boolean(data.displayName),
-                    Boolean(data.username),
-                    Boolean(data.bio),
-                    data.links.length > 0,
-                    Object.values(data.socials).some(Boolean),
-                  ].filter(Boolean).length / 6 * 100)}%
-                </span>
+          {Math.round(
+            ([
+              Boolean(data.avatarUrl),
+              Boolean(data.displayName),
+              Boolean(data.username),
+              Boolean(data.bio),
+              data.links.length > 0,
+              Object.values(data.socials).some(Boolean),
+            ].filter(Boolean).length /
+              6) *
+            100
+          ) < 100 && (
+              <div className="m-3 mb-4 rounded-xl border border-slate-200 p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="relative grid size-12 place-items-center">
+                    <svg viewBox="0 0 44 44" className="absolute inset-0 size-12 -rotate-90">
+                      <circle cx="22" cy="22" r="18" fill="none" stroke="#ede9fe" strokeWidth="5" />
+                      <circle
+                        cx="22"
+                        cy="22"
+                        r="18"
+                        fill="none"
+                        stroke="#8b5cf6"
+                        strokeWidth="5"
+                        strokeLinecap="round"
+                        strokeDasharray="56 113"
+                      />
+                    </svg>
+                    <span className="text-xs font-bold text-violet-600">
+                      {Math.round(
+                        ([
+                          Boolean(data.avatarUrl),
+                          Boolean(data.displayName),
+                          Boolean(data.username),
+                          Boolean(data.bio),
+                          data.links.length > 0,
+                          Object.values(data.socials).some(Boolean),
+                        ].filter(Boolean).length /
+                          6) *
+                        100
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold">Your setup checklist</p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {
+                        [
+                          Boolean(data.avatarUrl),
+                          Boolean(data.displayName),
+                          Boolean(data.username),
+                          Boolean(data.bio),
+                          data.links.length > 0,
+                          Object.values(data.socials).some(Boolean),
+                        ].filter(Boolean).length
+                      }{' '}
+                      of 6 complete
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setDashboardSection('setup')}
+                  className="h-9 w-full rounded-full bg-violet-600 text-xs font-semibold hover:bg-violet-700"
+                >
+                  Finish setup
+                </Button>
               </div>
-              <div>
-                <p className="text-xs font-semibold">Your setup checklist</p>
-                <p className="mt-1 text-[11px] text-slate-500">
-                  {[
-                    Boolean(data.avatarUrl),
-                    Boolean(data.displayName),
-                    Boolean(data.username),
-                    Boolean(data.bio),
-                    data.links.length > 0,
-                    Object.values(data.socials).some(Boolean),
-                  ].filter(Boolean).length} of 6 complete
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              onClick={() => setDashboardSection('setup')}
-              className="h-9 w-full rounded-full bg-violet-600 text-xs font-semibold hover:bg-violet-700"
-            >
-              Finish setup
-            </Button>
-          </div>
-          )}
+            )}
 
           <button
             type="button"
@@ -2671,9 +2852,7 @@ export default function BioLinkApp() {
             >
               <PanelLeft className="size-5" />
             </Button>
-            <div className="hidden text-sm font-medium text-slate-500 sm:block">
-              Dashboard
-            </div>
+            <div className="hidden text-sm font-medium text-slate-500 sm:block">Dashboard</div>
             <div className="ml-auto flex items-center gap-2">
               <Button
                 type="button"
@@ -2708,19 +2887,21 @@ export default function BioLinkApp() {
                       <ArrowLeft className="size-3.5" /> Back to dashboard
                     </button>
                     <h1 className="text-[23px] font-bold tracking-tight">
-                      {({
-                        'overview': 'Dashboard',
-                        messaging: 'Messaging',
-                        audience: 'Audience',
-                        insights: 'Insights',
-                        discoverability: 'Discoverability',
-                        'business-cards': 'Business cards',
-                        'social-planner': 'Social planner',
-                        'instagram-auto-reply': 'Instagram auto-reply',
-                        'link-shortener': 'Link shortener',
-                        setup: 'Setup checklist',
-                        settings: 'Settings',
-                      } as Record<DashboardSection, string>)[dashboardSection]}
+                      {(
+                        {
+                          overview: 'Dashboard',
+                          messaging: 'Messaging',
+                          audience: 'Audience',
+                          insights: 'Insights',
+                          discoverability: 'Discoverability',
+                          'business-cards': 'Business cards',
+                          'social-planner': 'Social planner',
+                          'instagram-auto-reply': 'Instagram auto-reply',
+                          'link-shortener': 'Link shortener',
+                          setup: 'Setup checklist',
+                          settings: 'Settings',
+                        } as Record<DashboardSection, string>
+                      )[dashboardSection]}
                     </h1>
                   </div>
                 </div>
@@ -2745,7 +2926,12 @@ export default function BioLinkApp() {
                           }}
                           className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-4 text-left hover:border-violet-300"
                         >
-                          <span className={`grid size-8 place-items-center rounded-full ${complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                          <span
+                            className={`grid size-8 place-items-center rounded-full ${complete
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-100 text-slate-400'
+                              }`}
+                          >
                             {complete ? <Check className="size-4" /> : <Plus className="size-4" />}
                           </span>
                           <span className="flex-1 text-sm font-semibold">{String(label)}</span>
@@ -2759,14 +2945,28 @@ export default function BioLinkApp() {
                 {dashboardSection === 'settings' && (
                   <div className="space-y-4">
                     <Card className="rounded-[18px] border-slate-200 shadow-none">
-                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Tema</CardTitle></CardHeader>
+                      <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-sm">Tema</CardTitle>
+                      </CardHeader>
                       <CardContent className="px-5 pb-5">
                         <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
                           <div>
-                            <p className="text-sm font-semibold">Wallpaper, warna, dan gaya tombol</p>
-                            <p className="mt-1 text-xs text-slate-500">Atur tampilan publik halaman Biolink Anda.</p>
+                            <p className="text-sm font-semibold">
+                              Wallpaper, warna, dan gaya tombol
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Atur tampilan publik halaman Biolink Anda.
+                            </p>
                           </div>
-                          <Button type="button" variant="outline" className="shrink-0 rounded-full" onClick={() => { setDashboardView('editor'); setDashboardTab('design'); }}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="shrink-0 rounded-full"
+                            onClick={() => {
+                              setDashboardView('editor');
+                              setDashboardTab('design');
+                            }}
+                          >
                             <Palette className="size-4" /> Atur Tema
                           </Button>
                         </div>
@@ -2774,20 +2974,28 @@ export default function BioLinkApp() {
                     </Card>
 
                     <Card className="rounded-[18px] border-slate-200 shadow-none">
-                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Username</CardTitle></CardHeader>
+                      <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-sm">Username</CardTitle>
+                      </CardHeader>
                       <CardContent className="space-y-3 px-5 pb-5">
                         <div className="flex rounded-xl border border-slate-200">
                           <span className="px-3 py-2.5 text-sm text-slate-400">biolink.id/</span>
                           <input
                             value={data.username}
-                            onChange={(e) => setData((prev) => ({
-                              ...prev,
-                              username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-                            }))}
+                            onChange={(e) =>
+                              setData((prev) => ({
+                                ...prev,
+                                username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                              }))
+                            }
                             className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none"
                           />
                         </div>
-                        <Button type="button" onClick={handleSaveSettings} className="rounded-full bg-violet-600 hover:bg-violet-700">
+                        <Button
+                          type="button"
+                          onClick={handleSaveSettings}
+                          className="rounded-full bg-violet-600 hover:bg-violet-700"
+                        >
                           Simpan Username
                         </Button>
                       </CardContent>
@@ -2795,12 +3003,31 @@ export default function BioLinkApp() {
 
                     {authProvider === 'email' && (
                       <Card className="rounded-[18px] border-slate-200 shadow-none">
-                        <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Ganti Password</CardTitle></CardHeader>
+                        <CardHeader className="px-5 py-4">
+                          <CardTitle className="text-sm">Ganti Password</CardTitle>
+                        </CardHeader>
                         <CardContent className="grid gap-3 px-5 pb-5 md:grid-cols-2">
-                          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password baru" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
-                          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Konfirmasi password" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                          <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Password baru"
+                            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                          />
+                          <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Konfirmasi password"
+                            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                          />
                           <div className="md:col-span-2">
-                            <Button type="button" variant="outline" onClick={handleChangePassword} className="rounded-full">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleChangePassword}
+                              className="rounded-full"
+                            >
                               Ganti Password
                             </Button>
                           </div>
@@ -2809,13 +3036,22 @@ export default function BioLinkApp() {
                     )}
 
                     <Card className="rounded-[18px] border-rose-200 bg-rose-50/40 shadow-none">
-                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm text-rose-700">Zona Berbahaya</CardTitle></CardHeader>
+                      <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-sm text-rose-700">Zona Berbahaya</CardTitle>
+                      </CardHeader>
                       <CardContent className="flex items-center justify-between gap-4 px-5 pb-5">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">Hapus akun</p>
-                          <p className="mt-1 text-xs text-slate-500">Menghapus profil dan semua data halaman Biolink.</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Menghapus profil dan semua data halaman Biolink.
+                          </p>
                         </div>
-                        <Button type="button" variant="outline" onClick={handleDeleteAccount} className="shrink-0 rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleDeleteAccount}
+                          className="shrink-0 rounded-full border-rose-200 text-rose-600 hover:bg-rose-50"
+                        >
                           <Trash2 className="size-4" /> Hapus Akun
                         </Button>
                       </CardContent>
@@ -2834,7 +3070,9 @@ export default function BioLinkApp() {
                           <label className="mb-1.5 block text-xs font-semibold">Judul halaman</label>
                           <input
                             value={data.seoTitle}
-                            onChange={(e) => setData((prev) => ({ ...prev, seoTitle: e.target.value }))}
+                            onChange={(e) =>
+                              setData((prev) => ({ ...prev, seoTitle: e.target.value }))
+                            }
                             placeholder={data.displayName || data.username}
                             maxLength={60}
                             className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
@@ -2844,10 +3082,14 @@ export default function BioLinkApp() {
                           </p>
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-xs font-semibold">Deskripsi halaman</label>
+                          <label className="mb-1.5 block text-xs font-semibold">
+                            Deskripsi halaman
+                          </label>
                           <textarea
                             value={data.seoDescription}
-                            onChange={(e) => setData((prev) => ({ ...prev, seoDescription: e.target.value }))}
+                            onChange={(e) =>
+                              setData((prev) => ({ ...prev, seoDescription: e.target.value }))
+                            }
                             placeholder={data.bio || 'Deskripsi singkat halaman Biolink Anda'}
                             maxLength={160}
                             className="min-h-24 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
@@ -2858,25 +3100,36 @@ export default function BioLinkApp() {
                         </div>
                         <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
                           <div>
-                            <p className="text-sm font-semibold">Mencegah indeks mesin pencari</p>
+                            <p className="text-sm font-semibold">
+                              Mencegah indeks mesin pencari
+                            </p>
                             <p className="mt-1 text-xs text-slate-500">
-                              Aktifkan <strong>noindex</strong> jika halaman belum ingin muncul di Google.
+                              Aktifkan <strong>noindex</strong> jika halaman belum ingin muncul di
+                              Google.
                             </p>
                           </div>
                           <button
                             type="button"
-                            onClick={() => setData((prev) => ({ ...prev, noIndex: !prev.noIndex }))}
-                            className={`h-6 w-11 shrink-0 rounded-full p-0.5 ${data.noIndex ? 'bg-violet-600' : 'bg-slate-200'}`}
+                            onClick={() =>
+                              setData((prev) => ({ ...prev, noIndex: !prev.noIndex }))
+                            }
+                            className={`h-6 w-11 shrink-0 rounded-full p-0.5 ${data.noIndex ? 'bg-violet-600' : 'bg-slate-200'
+                              }`}
                             aria-label="Aktifkan noindex"
                           >
-                            <span className={`block size-5 rounded-full bg-white transition-transform ${data.noIndex ? 'translate-x-5' : ''}`} />
+                            <span
+                              className={`block size-5 rounded-full bg-white transition-transform ${data.noIndex ? 'translate-x-5' : ''
+                                }`}
+                            />
                           </button>
                         </div>
                       </CardContent>
                     </Card>
 
                     <Card className="rounded-[18px] border-slate-200 shadow-none">
-                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Pratinjau hasil pencarian</CardTitle></CardHeader>
+                      <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-sm">Pratinjau hasil pencarian</CardTitle>
+                      </CardHeader>
                       <CardContent className="px-5 pb-5">
                         <div className="rounded-xl border border-slate-200 p-4">
                           <p className="text-[12px] text-emerald-700">
@@ -2895,7 +3148,27 @@ export default function BioLinkApp() {
                 )}
 
                 {dashboardSection === 'messaging' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><label className="mb-2 block text-sm font-semibold">Announcement</label><textarea value={draftMessage} onChange={(e) => setDraftMessage(e.target.value)} placeholder="Write a message to your audience..." className="min-h-32 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm" /><Button type="button" onClick={() => { if (!draftMessage.trim()) return showToast('Tuliskan pesan terlebih dahulu'); showToast('Pesan berhasil disimpan'); }} className="mt-3 rounded-full bg-violet-600 hover:bg-violet-700">Save draft</Button></CardContent></Card>
+                  <Card className="rounded-[18px] border-slate-200 shadow-none">
+                    <CardContent className="p-5">
+                      <label className="mb-2 block text-sm font-semibold">Announcement</label>
+                      <textarea
+                        value={draftMessage}
+                        onChange={(e) => setDraftMessage(e.target.value)}
+                        placeholder="Write a message to your audience..."
+                        className="min-h-32 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (!draftMessage.trim()) return showToast('Tuliskan pesan terlebih dahulu');
+                          showToast('Pesan berhasil disimpan');
+                        }}
+                        className="mt-3 rounded-full bg-violet-600 hover:bg-violet-700"
+                      >
+                        Save draft
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {dashboardSection === 'audience' && (
@@ -2906,8 +3179,8 @@ export default function BioLinkApp() {
                           <div>
                             <p className="text-sm font-bold text-slate-900">Audience Manager</p>
                             <p className="mt-1 text-xs leading-5 text-slate-500">
-                              Simpan email pengunjung yang memberikan izin, lalu gunakan daftar ini untuk
-                              update, promo, atau komunikasi pribadi.
+                              Simpan email pengunjung yang memberikan izin, lalu gunakan daftar ini
+                              untuk update, promo, atau komunikasi pribadi.
                             </p>
                           </div>
                           <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
@@ -2937,7 +3210,10 @@ export default function BioLinkApp() {
                             placeholder="nama@email.com"
                             className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
                           />
-                          <Button type="submit" className="rounded-full bg-violet-600 hover:bg-violet-700">
+                          <Button
+                            type="submit"
+                            className="rounded-full bg-violet-600 hover:bg-violet-700"
+                          >
                             <Plus className="size-4" /> Tambah
                           </Button>
                         </form>
@@ -2957,7 +3233,9 @@ export default function BioLinkApp() {
                             disabled={audienceList.length === 0}
                             onClick={() => {
                               const csv = ['Email', ...audienceList].join('\n');
-                              const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+                              const url = URL.createObjectURL(
+                                new Blob([csv], { type: 'text/csv;charset=utf-8' })
+                              );
                               const anchor = document.createElement('a');
                               anchor.href = url;
                               anchor.download = `${data.username || 'biolink'}-audience.csv`;
@@ -2972,7 +3250,9 @@ export default function BioLinkApp() {
 
                         <div className="mt-4 space-y-2">
                           {audienceList
-                            .filter((email) => email.toLowerCase().includes(audienceQuery.trim().toLowerCase()))
+                            .filter((email) =>
+                              email.toLowerCase().includes(audienceQuery.trim().toLowerCase())
+                            )
                             .map((email) => (
                               <div
                                 key={email}
@@ -2982,7 +3262,9 @@ export default function BioLinkApp() {
                                 <span className="flex-1 truncate">{email}</span>
                                 <button
                                   type="button"
-                                  onClick={() => setAudienceList((prev) => prev.filter((item) => item !== email))}
+                                  onClick={() =>
+                                    setAudienceList((prev) => prev.filter((item) => item !== email))
+                                  }
                                   className="rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                                   title="Hapus audience"
                                 >
@@ -3046,20 +3328,21 @@ export default function BioLinkApp() {
                       <CardHeader className="flex-row items-center justify-between gap-3 px-5 py-4">
                         <CardTitle className="text-sm">Link paling sering diklik</CardTitle>
                         <div className="flex rounded-full bg-slate-100 p-1">
-                          {([
-                            ['horizontal', 'Batang'],
-                            ['vertical', 'Kolom'],
-                            ['donut', 'Donut'],
-                          ] as const).map(([type, label]) => (
+                          {(
+                            [
+                              ['horizontal', 'Batang'],
+                              ['vertical', 'Kolom'],
+                              ['donut', 'Donut'],
+                            ] as const
+                          ).map(([type, label]) => (
                             <button
                               key={type}
                               type="button"
                               onClick={() => setLinkChartType(type)}
-                              className={`rounded-full px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
-                                linkChartType === type
-                                  ? 'bg-white text-violet-700 shadow-sm'
-                                  : 'text-slate-500 hover:text-slate-800'
-                              }`}
+                              className={`rounded-full px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${linkChartType === type
+                                ? 'bg-white text-violet-700 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-800'
+                                }`}
                             >
                               {label}
                             </button>
@@ -3074,21 +3357,37 @@ export default function BioLinkApp() {
                         ) : (
                           (() => {
                             const sortedLinks = [...data.links].sort((a, b) => b.clicks - a.clicks);
-                            const maxClicks = Math.max(...sortedLinks.map((link) => link.clicks), 1);
-                            const chartColors = ['#8b5cf6', '#ec4899', '#0ea5e9', '#f59e0b', '#10b981', '#64748b'];
+                            const maxClicks = Math.max(
+                              ...sortedLinks.map((link) => link.clicks),
+                              1
+                            );
+                            const chartColors = [
+                              '#8b5cf6',
+                              '#ec4899',
+                              '#0ea5e9',
+                              '#f59e0b',
+                              '#10b981',
+                              '#64748b',
+                            ];
 
                             if (linkChartType === 'vertical') {
                               return (
                                 <div className="mt-2 overflow-x-auto">
                                   <div className="flex h-64 min-w-[420px] items-end gap-3 border-b border-slate-200 px-2">
                                     {sortedLinks.map((link, index) => (
-                                      <div key={link.id} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-                                        <span className="text-[10px] font-bold text-slate-600">{link.clicks}</span>
+                                      <div
+                                        key={link.id}
+                                        className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2"
+                                      >
+                                        <span className="text-[10px] font-bold text-slate-600">
+                                          {link.clicks}
+                                        </span>
                                         <div
                                           className="w-full max-w-14 rounded-t-lg transition-all"
                                           style={{
                                             height: `${Math.max((link.clicks / maxClicks) * 180, link.clicks > 0 ? 8 : 2)}px`,
-                                            backgroundColor: chartColors[index % chartColors.length],
+                                            backgroundColor:
+                                              chartColors[index % chartColors.length],
                                           }}
                                           title={`${link.title}: ${link.clicks} klik`}
                                         />
@@ -3117,9 +3416,10 @@ export default function BioLinkApp() {
                                   <div
                                     className="relative mx-auto size-44 rounded-full"
                                     style={{
-                                      background: total === 0
-                                        ? '#f1f5f9'
-                                        : `conic-gradient(${segments.join(', ')})`,
+                                      background:
+                                        total === 0
+                                          ? '#f1f5f9'
+                                          : `conic-gradient(${segments.join(', ')})`,
                                     }}
                                   >
                                     <div className="absolute inset-[28px] grid place-items-center rounded-full bg-white text-center">
@@ -3131,16 +3431,26 @@ export default function BioLinkApp() {
                                   </div>
                                   <div className="space-y-2.5">
                                     {sortedLinks.map((link, index) => {
-                                      const percent = total === 0 ? 0 : Math.round((link.clicks / total) * 100);
+                                      const percent =
+                                        total === 0 ? 0 : Math.round((link.clicks / total) * 100);
                                       return (
                                         <div key={link.id} className="flex items-center gap-2 text-xs">
                                           <span
                                             className="size-2.5 shrink-0 rounded-full"
-                                            style={{ backgroundColor: chartColors[index % chartColors.length] }}
+                                            style={{
+                                              backgroundColor:
+                                                chartColors[index % chartColors.length],
+                                            }}
                                           />
-                                          <span className="min-w-0 flex-1 truncate text-slate-700">{link.title}</span>
-                                          <span className="font-bold text-slate-800">{link.clicks}</span>
-                                          <span className="w-10 text-right text-slate-400">{percent}%</span>
+                                          <span className="min-w-0 flex-1 truncate text-slate-700">
+                                            {link.title}
+                                          </span>
+                                          <span className="font-bold text-slate-800">
+                                            {link.clicks}
+                                          </span>
+                                          <span className="w-10 text-right text-slate-400">
+                                            {percent}%
+                                          </span>
                                         </div>
                                       );
                                     })}
@@ -3171,7 +3481,8 @@ export default function BioLinkApp() {
                                           className="h-full rounded-full transition-all"
                                           style={{
                                             width: `${width}%`,
-                                            backgroundColor: chartColors[index % chartColors.length],
+                                            backgroundColor:
+                                              chartColors[index % chartColors.length],
                                           }}
                                         />
                                       </div>
@@ -3210,7 +3521,13 @@ export default function BioLinkApp() {
                           ].map(([icon, text]) => (
                             <div key={icon} className="px-2">
                               <div className="mx-auto mb-2 grid size-8 place-items-center rounded-lg border border-slate-200">
-                                {icon === 'QR' ? <QrCode className="size-4" /> : icon === 'Share' ? <Share2 className="size-4" /> : <Users className="size-4" />}
+                                {icon === 'QR' ? (
+                                  <QrCode className="size-4" />
+                                ) : icon === 'Share' ? (
+                                  <Share2 className="size-4" />
+                                ) : (
+                                  <Users className="size-4" />
+                                )}
                               </div>
                               <p className="text-[11px] leading-4 text-slate-600">{text}</p>
                             </div>
@@ -3230,7 +3547,9 @@ export default function BioLinkApp() {
                             alt={businessCardName || data.displayName}
                             className="mb-3 size-12 rounded-full border-2 border-white/80 object-cover shadow-sm"
                           />
-                          <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">Name</div>
+                          <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">
+                            Name
+                          </div>
                           <p className="mt-1 truncate text-[13px] font-bold text-slate-950">
                             {businessCardName || data.displayName}
                           </p>
@@ -3239,7 +3558,9 @@ export default function BioLinkApp() {
                               {data.accountEmail}
                             </p>
                           )}
-                          <div className="mt-4 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">URL</div>
+                          <div className="mt-4 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-800">
+                            URL
+                          </div>
                           <p className="mt-1 truncate text-[11px] font-semibold text-slate-700">
                             {getPublicProfileUrl(data.username).replace(/^https?:\/\//, '')}
                           </p>
@@ -3250,7 +3571,10 @@ export default function BioLinkApp() {
                             title="Open public Linktree"
                             className="mt-auto rounded-lg bg-white p-2.5 shadow-sm"
                           >
-                            <div id="business-card-qr" className="mx-auto flex h-[118px] w-[118px] items-center justify-center rounded bg-white">
+                            <div
+                              id="business-card-qr"
+                              className="mx-auto flex h-[118px] w-[118px] items-center justify-center rounded bg-white"
+                            >
                               <QRCodeSVG
                                 value={getPublicProfileUrl(data.username)}
                                 size={118}
@@ -3274,7 +3598,9 @@ export default function BioLinkApp() {
                           </div>
 
                           <div>
-                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Display name</label>
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                              Display name
+                            </label>
                             <input
                               value={businessCardName}
                               maxLength={30}
@@ -3284,17 +3610,29 @@ export default function BioLinkApp() {
                           </div>
 
                           <div>
-                            <label className="mb-2 block text-xs font-semibold text-slate-700">Background color</label>
+                            <label className="mb-2 block text-xs font-semibold text-slate-700">
+                              Background color
+                            </label>
                             <div className="flex flex-wrap gap-2">
-                              {['#B8F34A', '#F28D2F', '#FF6B65', '#D95B5B', '#2487E8', '#6DBB67', '#1F2937', '#C66DAD'].map((color) => (
+                              {[
+                                '#B8F34A',
+                                '#F28D2F',
+                                '#FF6B65',
+                                '#D95B5B',
+                                '#2487E8',
+                                '#6DBB67',
+                                '#1F2937',
+                                '#C66DAD',
+                              ].map((color) => (
                                 <button
                                   key={color}
                                   type="button"
                                   onClick={() => setBusinessCardColor(color)}
                                   style={{ backgroundColor: color }}
-                                  className={`size-8 rounded-full border-2 border-white shadow-sm ${
-                                    businessCardColor === color ? 'ring-2 ring-slate-800 ring-offset-2' : ''
-                                  }`}
+                                  className={`size-8 rounded-full border-2 border-white shadow-sm ${businessCardColor === color
+                                    ? 'ring-2 ring-slate-800 ring-offset-2'
+                                    : ''
+                                    }`}
                                   aria-label={`Use ${color}`}
                                 />
                               ))}
@@ -3302,22 +3640,42 @@ export default function BioLinkApp() {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            <Button type="button" onClick={handleDownloadBusinessCardQr} className="rounded-full bg-slate-950 px-5 text-xs hover:bg-slate-800">
+                            <Button
+                              type="button"
+                              onClick={handleDownloadBusinessCardQr}
+                              className="rounded-full bg-slate-950 px-5 text-xs hover:bg-slate-800"
+                            >
                               <Download className="size-4" /> Download QR
                             </Button>
-                            <Button type="button" variant="outline" onClick={handleShareBusinessCard} className="rounded-full px-5 text-xs">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleShareBusinessCard}
+                              className="rounded-full px-5 text-xs"
+                            >
                               <Share2 className="size-4" /> Share card
                             </Button>
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => window.open(getPublicProfileUrl(data.username), '_blank', 'noopener,noreferrer')}
+                              onClick={() =>
+                                window.open(
+                                  getPublicProfileUrl(data.username),
+                                  '_blank',
+                                  'noopener,noreferrer'
+                                )
+                              }
                               className="rounded-full px-5 text-xs"
                             >
                               <ExternalLink className="size-4" /> Open link
                             </Button>
                             {saveContactEnabled && (
-                              <Button type="button" variant="outline" onClick={handleDownloadVCard} className="rounded-full px-5 text-xs">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleDownloadVCard}
+                                className="rounded-full px-5 text-xs"
+                              >
                                 <Phone className="size-4" /> Download contact
                               </Button>
                             )}
@@ -3329,30 +3687,50 @@ export default function BioLinkApp() {
                     <Card className="rounded-[18px] border-slate-200 shadow-none">
                       <CardContent className="flex items-center justify-between gap-4 p-5">
                         <div>
-                          <p className="text-sm font-semibold">Let visitors share their details back</p>
-                          <p className="mt-1 text-xs text-slate-500">Collect a name and email from people who follow your Linktree.</p>
+                          <p className="text-sm font-semibold">
+                            Let visitors share their details back
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Collect a name and email from people who follow your Linktree.
+                          </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setShareDetailsBack((value) => !value)}
-                          className={`h-6 w-11 shrink-0 rounded-full p-0.5 ${shareDetailsBack ? 'bg-violet-600' : 'bg-slate-200'}`}
+                          className={`h-6 w-11 shrink-0 rounded-full p-0.5 ${shareDetailsBack ? 'bg-violet-600' : 'bg-slate-200'
+                            }`}
                         >
-                          <span className={`block size-5 rounded-full bg-white transition-transform ${shareDetailsBack ? 'translate-x-5' : ''}`} />
+                          <span
+                            className={`block size-5 rounded-full bg-white transition-transform ${shareDetailsBack ? 'translate-x-5' : ''
+                              }`}
+                          />
                         </button>
                       </CardContent>
                     </Card>
 
                     <Card className="rounded-[18px] border-slate-200 shadow-none">
                       <CardContent className="p-5">
-                        <button type="button" onClick={() => setSaveContactEnabled((value) => !value)} className="flex w-full items-center justify-between text-left">
+                        <button
+                          type="button"
+                          onClick={() => setSaveContactEnabled((value) => !value)}
+                          className="flex w-full items-center justify-between text-left"
+                        >
                           <div>
                             <p className="text-sm font-semibold">Let visitors save your contact</p>
-                            <p className="mt-1 text-xs text-slate-500">Enable a downloadable contact card from this business card.</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Enable a downloadable contact card from this business card.
+                            </p>
                           </div>
                           <span className="ml-4 flex shrink-0 items-center gap-2">
                             {!showContactFields && <Plus className="size-4 text-slate-500" />}
-                            <span className={`h-6 w-11 rounded-full p-0.5 ${saveContactEnabled ? 'bg-violet-600' : 'bg-slate-200'}`}>
-                              <span className={`block size-5 rounded-full bg-white transition-transform ${saveContactEnabled ? 'translate-x-5' : ''}`} />
+                            <span
+                              className={`h-6 w-11 rounded-full p-0.5 ${saveContactEnabled ? 'bg-violet-600' : 'bg-slate-200'
+                                }`}
+                            >
+                              <span
+                                className={`block size-5 rounded-full bg-white transition-transform ${saveContactEnabled ? 'translate-x-5' : ''
+                                  }`}
+                              />
                             </span>
                           </span>
                         </button>
@@ -3371,11 +3749,22 @@ export default function BioLinkApp() {
                           <div className="mt-4 grid gap-3 sm:grid-cols-2">
                             <div>
                               <label className="mb-1.5 block text-xs font-semibold">Phone</label>
-                              <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+62..." className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                              <input
+                                value={contactPhone}
+                                onChange={(e) => setContactPhone(e.target.value)}
+                                placeholder="+62..."
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                              />
                             </div>
                             <div>
                               <label className="mb-1.5 block text-xs font-semibold">Email</label>
-                              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="name@example.com" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                              <input
+                                type="email"
+                                value={contactEmail}
+                                onChange={(e) => setContactEmail(e.target.value)}
+                                placeholder="name@example.com"
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                              />
                             </div>
                           </div>
                         )}
@@ -3385,136 +3774,223 @@ export default function BioLinkApp() {
                 )}
 
                 {dashboardSection === 'social-planner' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="space-y-3 p-5"><textarea value={plannedPost} onChange={(e) => setPlannedPost(e.target.value)} placeholder="Post caption..." className="min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm" /><input type="datetime-local" value={plannedDate} onChange={(e) => setPlannedDate(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><Button type="button" onClick={() => { if (!plannedPost.trim() || !plannedDate) return showToast('Lengkapi caption dan jadwal'); showToast('Post berhasil dijadwalkan'); }} className="rounded-full bg-violet-600 hover:bg-violet-700">Schedule post</Button></CardContent></Card>
+                  <Card className="rounded-[18px] border-slate-200 shadow-none">
+                    <CardContent className="space-y-3 p-5">
+                      <textarea
+                        value={plannedPost}
+                        onChange={(e) => setPlannedPost(e.target.value)}
+                        placeholder="Post caption..."
+                        className="min-h-28 w-full rounded-xl border border-slate-200 p-3 text-sm"
+                      />
+                      <input
+                        type="datetime-local"
+                        value={plannedDate}
+                        onChange={(e) => setPlannedDate(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (!plannedPost.trim() || !plannedDate)
+                            return showToast('Lengkapi caption dan jadwal');
+                          showToast('Post berhasil dijadwalkan');
+                        }}
+                        className="rounded-full bg-violet-600 hover:bg-violet-700"
+                      >
+                        Schedule post
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {dashboardSection === 'instagram-auto-reply' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="space-y-4 p-5"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold">Auto-reply</p><p className="text-xs text-slate-500">Reply to new direct messages</p></div><button type="button" onClick={() => setAutoReplyEnabled((prev) => !prev)} className={`w-11 rounded-full p-0.5 ${autoReplyEnabled ? 'bg-violet-600' : 'bg-slate-200'}`}><span className={`block size-5 rounded-full bg-white transition-transform ${autoReplyEnabled ? 'translate-x-5' : ''}`} /></button></div><textarea value={autoReplyMessage} onChange={(e) => setAutoReplyMessage(e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm" /><Button type="button" onClick={() => showToast('Auto-reply berhasil disimpan')} className="rounded-full bg-violet-600 hover:bg-violet-700">Save auto-reply</Button></CardContent></Card>
+                  <Card className="rounded-[18px] border-slate-200 shadow-none">
+                    <CardContent className="space-y-4 p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">Auto-reply</p>
+                          <p className="text-xs text-slate-500">Reply to new direct messages</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAutoReplyEnabled((prev) => !prev)}
+                          className={`w-11 rounded-full p-0.5 ${autoReplyEnabled ? 'bg-violet-600' : 'bg-slate-200'
+                            }`}
+                        >
+                          <span
+                            className={`block size-5 rounded-full bg-white transition-transform ${autoReplyEnabled ? 'translate-x-5' : ''
+                              }`}
+                          />
+                        </button>
+                      </div>
+                      <textarea
+                        value={autoReplyMessage}
+                        onChange={(e) => setAutoReplyMessage(e.target.value)}
+                        className="min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => showToast('Auto-reply berhasil disimpan')}
+                        className="rounded-full bg-violet-600 hover:bg-violet-700"
+                      >
+                        Save auto-reply
+                      </Button>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {dashboardSection === 'link-shortener' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="mb-2 text-sm font-semibold">Public link</p><div className="flex gap-2"><input readOnly value={getPublicProfileUrl(data.username)} className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><Button type="button" onClick={handleCopyShareUrl} className="rounded-full"><Copy className="size-4" /> Copy</Button></div></CardContent></Card>
+                  <Card className="rounded-[18px] border-slate-200 shadow-none">
+                    <CardContent className="p-5">
+                      <p className="mb-2 text-sm font-semibold">Public link</p>
+                      <div className="flex gap-2">
+                        <input
+                          readOnly
+                          value={getPublicProfileUrl(data.username)}
+                          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                        />
+                        <Button type="button" onClick={handleCopyShareUrl} className="rounded-full">
+                          <Copy className="size-4" /> Copy
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
               </section>
             ) : (
               <>
-            <div className="mb-8 flex items-center justify-between">
-              <h1 className="text-[23px] font-bold tracking-tight">
-                Good morning, {data.displayName}
-              </h1>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDashboardView('editor')}
-                  className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white sm:flex"
-                >
-                  linktree/{data.username}
-                  <Share2 className="size-3.5" />
-                </button>
-              </div>
-            </div>
-
-            <section>
-              <h2 className="mb-4 text-[15px] font-bold">Your Linktree</h2>
-              <Card className="inline-block w-[218px] overflow-hidden rounded-[17px] border-0 bg-[#4d6688] p-0 text-left text-white shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setDashboardView('editor')}
-                  className="w-full"
-                >
-                  <div
-                    className="relative h-[228px] overflow-hidden"
-                    style={{
-                      backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${data.avatarUrl})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}
-                  >
-                    <div className="absolute inset-x-0 bottom-3 px-3">
-                      <p className="truncate text-[14px] font-bold">{data.displayName}</p>
-                      <p className="mt-0.5 text-[11px] text-white/75">
-                        {activeLinks} {activeLinks === 1 ? 'link' : 'links'}
-                      </p>
-                    </div>
+                <div className="mb-8 flex items-center justify-between">
+                  <h1 className="text-[23px] font-bold tracking-tight">
+                    Good morning, {data.displayName}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDashboardView('editor')}
+                      className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white sm:flex"
+                    >
+                      linktree/{data.username}
+                      <Share2 className="size-3.5" />
+                    </button>
                   </div>
-                  <div className="flex h-[50px] items-center justify-between px-3">
-                    <span className="min-w-0 truncate text-[13px] font-bold">
-                      {data.displayName}
-                    </span>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <span className="grid size-7 place-items-center rounded-full bg-white/15">
-                        <Share2 className="size-3.5" />
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
-                        Edit
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              </Card>
-            </section>
+                </div>
 
-            <section className="mt-8">
-              <h2 className="mb-4 text-[15px] font-bold">In the last week</h2>
-              <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-                <Card
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDashboardSection('insights')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') setDashboardSection('insights');
-                  }}
-                  className="min-h-[230px] cursor-pointer rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300"
-                >
-                  <CardHeader className="flex-row items-center justify-between px-5 py-4">
-                    <CardTitle className="text-[13px]">Linktree visitors</CardTitle>
-                    <span className="flex items-center gap-1 text-[11px] text-slate-500">
-                      All time <ChevronRight className="size-3.5" />
-                    </span>
-                  </CardHeader>
-                  <CardContent className="px-5">
-                    {totalClicks === 0 ? (
-                      <p className="text-[12px] text-slate-500">No activity during this time</p>
-                    ) : (
-                      <div className="mt-5">
-                        <p className="text-3xl font-bold">{totalClicks}</p>
-                        <p className="mt-1 text-xs text-slate-500">Total link clicks</p>
+                <section>
+                  <h2 className="mb-4 text-[15px] font-bold">Your Linktree</h2>
+                  <Card className="inline-block w-[218px] overflow-hidden rounded-[17px] border-0 bg-[#4d6688] p-0 text-left text-white shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setDashboardView('editor')}
+                      className="w-full"
+                    >
+                      <div
+                        className="relative h-[228px] overflow-hidden"
+                        style={{
+                          backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.72)), url(${data.avatarUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      >
+                        <div className="absolute inset-x-0 bottom-3 px-3">
+                          <p className="truncate text-[14px] font-bold">{data.displayName}</p>
+                          <p className="mt-0.5 text-[11px] text-white/75">
+                            {activeLinks} {activeLinks === 1 ? 'link' : 'links'}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      <div className="flex h-[50px] items-center justify-between px-3">
+                        <span className="min-w-0 truncate text-[13px] font-bold">
+                          {data.displayName}
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <span className="grid size-7 place-items-center rounded-full bg-white/15">
+                            <Share2 className="size-3.5" />
+                          </span>
+                          <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
+                            Edit
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  </Card>
+                </section>
 
-                <Card
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDashboardSection('audience')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') setDashboardSection('audience');
-                  }}
-                  className="hidden min-h-[230px] cursor-pointer overflow-hidden rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300 md:block"
-                >
-                  <CardHeader className="px-5 py-4">
-                    <CardTitle className="text-[13px]">Audience growth</CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-5">
-                    <svg viewBox="0 0 280 128" className="h-[128px] w-full">
-                      <line x1="0" y1="100" x2="280" y2="100" stroke="#f1f5f9" />
-                      <line x1="0" y1="60" x2="280" y2="60" stroke="#f1f5f9" />
-                      <line x1="0" y1="20" x2="280" y2="20" stroke="#f1f5f9" />
-                      <path d="M0 88 C35 82, 55 92, 80 78 S130 70, 155 60 S210 58, 280 32" fill="none" stroke="#ef5aa4" strokeWidth="2.5" />
-                      <path d="M0 105 C42 98, 72 88, 105 92 S160 82, 195 70 S245 58, 280 48" fill="none" stroke="#7c3aed" strokeWidth="2.5" />
-                      {[70, 105, 140, 175, 210, 245, 280].map((x, index) => (
-                        <circle key={x} cx={x} cy={[88, 82, 92, 78, 70, 60, 32][index]} r="2.5" fill="#ef5aa4" />
-                      ))}
-                    </svg>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
+                <section className="mt-8">
+                  <h2 className="mb-4 text-[15px] font-bold">In the last week</h2>
+                  <div className="grid gap-4 md:grid-cols-[1fr_320px]">
+                    <Card
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setDashboardSection('insights')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setDashboardSection('insights');
+                      }}
+                      className="min-h-[230px] cursor-pointer rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300"
+                    >
+                      <CardHeader className="flex-row items-center justify-between px-5 py-4">
+                        <CardTitle className="text-[13px]">Linktree visitors</CardTitle>
+                        <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                          All time <ChevronRight className="size-3.5" />
+                        </span>
+                      </CardHeader>
+                      <CardContent className="px-5">
+                        {totalClicks === 0 ? (
+                          <p className="text-[12px] text-slate-500">No activity during this time</p>
+                        ) : (
+                          <div className="mt-5">
+                            <p className="text-3xl font-bold">{totalClicks}</p>
+                            <p className="mt-1 text-xs text-slate-500">Total link clicks</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setDashboardSection('audience')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setDashboardSection('audience');
+                      }}
+                      className="hidden min-h-[230px] cursor-pointer overflow-hidden rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300 md:block"
+                    >
+                      <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-[13px]">Audience growth</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-5">
+                        <svg viewBox="0 0 280 128" className="h-[128px] w-full">
+                          <line x1="0" y1="100" x2="280" y2="100" stroke="#f1f5f9" />
+                          <line x1="0" y1="60" x2="280" y2="60" stroke="#f1f5f9" />
+                          <line x1="0" y1="20" x2="280" y2="20" stroke="#f1f5f9" />
+                          <path
+                            d="M0 88 C35 82, 55 92, 80 78 S130 70, 155 60 S210 58, 280 32"
+                            fill="none"
+                            stroke="#ef5aa4"
+                            strokeWidth="2.5"
+                          />
+                          <path
+                            d="M0 105 C42 98, 72 88, 105 92 S160 82, 195 70 S245 58, 280 48"
+                            fill="none"
+                            stroke="#7c3aed"
+                            strokeWidth="2.5"
+                          />
+                          {[70, 105, 140, 175, 210, 245, 280].map((x, index) => (
+                            <circle
+                              key={x}
+                              cx={x}
+                              cy={[88, 82, 92, 78, 70, 60, 32][index]}
+                              r="2.5"
+                              fill="#ef5aa4"
+                            />
+                          ))}
+                        </svg>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </section>
               </>
             )}
           </div>
-
         </main>
       </div>
     );
@@ -3538,9 +4014,7 @@ export default function BioLinkApp() {
             <PanelLeft className="size-4" />
           </button>
           {syncStatus === 'saving' && (
-            <span className="hidden md:inline-block text-[11px] text-slate-400">
-              Menyimpan...
-            </span>
+            <span className="hidden md:inline-block text-[11px] text-slate-400">Menyimpan...</span>
           )}
           {syncStatus === 'saved' && (
             <span className="hidden md:inline-block text-[11px] text-emerald-600">
@@ -3625,18 +4099,16 @@ export default function BioLinkApp() {
           <button
             type="button"
             onClick={() => setMobileDashMode('editor')}
-            className={`py-2 rounded-full text-xs font-semibold transition-colors ${
-              mobileDashMode === 'editor' ? 'bg-sky-500 text-white' : 'text-slate-600'
-            }`}
+            className={`py-2 rounded-full text-xs font-semibold transition-colors ${mobileDashMode === 'editor' ? 'bg-sky-500 text-white' : 'text-slate-600'
+              }`}
           >
             Editor
           </button>
           <button
             type="button"
             onClick={() => setMobileDashMode('preview')}
-            className={`py-2 rounded-full text-xs font-semibold transition-colors ${
-              mobileDashMode === 'preview' ? 'bg-sky-500 text-white' : 'text-slate-600'
-            }`}
+            className={`py-2 rounded-full text-xs font-semibold transition-colors ${mobileDashMode === 'preview' ? 'bg-sky-500 text-white' : 'text-slate-600'
+              }`}
           >
             Preview
           </button>
@@ -3647,9 +4119,8 @@ export default function BioLinkApp() {
       <div className="flex-1 flex flex-col lg:flex-row max-w-[1440px] w-full mx-auto px-3 sm:px-6 pb-8 gap-4 lg:gap-6">
         {/* LEFT VERTICAL ICON RAIL */}
         <aside
-          className={`lg:w-16 flex lg:flex-col items-center justify-center lg:justify-start lg:pt-28 gap-4 ${
-            mobileDashMode === 'preview' ? 'hidden lg:flex' : 'flex'
-          }`}
+          className={`lg:w-16 flex lg:flex-col items-center justify-center lg:justify-start lg:pt-28 gap-4 ${mobileDashMode === 'preview' ? 'hidden lg:flex' : 'flex'
+            }`}
         >
           {(
             [
@@ -3668,18 +4139,16 @@ export default function BioLinkApp() {
                 className="group flex flex-col items-center gap-1.5 cursor-pointer"
               >
                 <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
-                    active
-                      ? 'bg-sky-500 text-white ring-4 ring-sky-100'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-sky-300 hover:text-sky-600'
-                  }`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${active
+                    ? 'bg-sky-500 text-white ring-4 ring-sky-100'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-sky-300 hover:text-sky-600'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                 </div>
                 <span
-                  className={`text-[11px] font-semibold ${
-                    active ? 'text-sky-600' : 'text-slate-500'
-                  }`}
+                  className={`text-[11px] font-semibold ${active ? 'text-sky-600' : 'text-slate-500'
+                    }`}
                 >
                   {nav.label}
                 </span>
@@ -3690,9 +4159,8 @@ export default function BioLinkApp() {
 
         {/* CENTER-LEFT WHITE ROUNDED EDITOR CARD */}
         <section
-          className={`flex-1 max-w-2xl w-full mx-auto lg:mx-0 bg-white border border-slate-200/90 rounded-[32px] p-5 sm:p-8 shadow-2xs ${
-            mobileDashMode === 'preview' ? 'hidden lg:block' : 'block'
-          }`}
+          className={`flex-1 max-w-2xl w-full mx-auto lg:mx-0 bg-white border border-slate-200/90 rounded-[32px] p-5 sm:p-8 shadow-2xs ${mobileDashMode === 'preview' ? 'hidden lg:block' : 'block'
+            }`}
         >
           {/* TAB A: CONTENT */}
           {dashboardTab === 'content' && (
@@ -3751,10 +4219,15 @@ export default function BioLinkApp() {
                 </div>
               </div>
 
-              <div className="border-b border-slate-200 flex items-center gap-6">
+              <div className="border-b border-slate-200 flex items-center justify-between gap-4">
                 <span className="pb-2.5 border-b-2 border-sky-500 text-sm font-semibold text-slate-900">
                   Links ({data.links.length})
                 </span>
+                {data.links.length > 1 && (
+                  <span className="pb-2 text-[11px] text-slate-400">
+                    Geser ikon titik untuk mengubah urutan
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3777,15 +4250,62 @@ export default function BioLinkApp() {
               </div>
 
               <div className="space-y-3">
-                {data.links.map((link) => (
+                {data.links.map((link, index) => (
                   <div
                     key={link.id}
-                    className={`bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-3 transition-opacity ${
-                      link.active ? 'opacity-100' : 'opacity-55 bg-slate-50'
-                    }`}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedLinkIndex(index);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', String(index));
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverLinkIndex !== index) {
+                        setDragOverLinkIndex(index);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverLinkIndex === index) {
+                        setDragOverLinkIndex(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const fromIndex =
+                        draggedLinkIndex !== null
+                          ? draggedLinkIndex
+                          : Number(e.dataTransfer.getData('text/plain'));
+                      handleReorderLinks(fromIndex, index);
+                      setDraggedLinkIndex(null);
+                      setDragOverLinkIndex(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedLinkIndex(null);
+                      setDragOverLinkIndex(null);
+                    }}
+                    className={`bg-white border rounded-2xl p-4 flex items-center justify-between gap-3 transition-all ${draggedLinkIndex === index
+                      ? 'opacity-45 scale-[0.98] border-sky-400'
+                      : dragOverLinkIndex === index
+                        ? 'border-sky-500 ring-2 ring-sky-100 bg-sky-50/30'
+                        : link.active
+                          ? 'opacity-100 border-slate-200'
+                          : 'opacity-55 bg-slate-50 border-slate-200'
+                      }`}
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      {getLinkIconUrl(link) ? (
+                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                      <span
+                        title="Tahan & geser untuk mengurutkan"
+                        className="p-1 text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing shrink-0"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </span>
+                      {renderLinkIcon(link) ? (
+                        <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                          {renderLinkIcon(link, 'w-4 h-4')}
+                        </div>
+                      ) : getLinkIconUrl(link) ? (
                         <img
                           src={getLinkIconUrl(link)!}
                           alt=""
@@ -3819,14 +4339,12 @@ export default function BioLinkApp() {
                           }))
                         }
                         aria-label="Aktifkan/Nonaktifkan Link"
-                        className={`w-10 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
-                          link.active ? 'bg-sky-500' : 'bg-slate-200'
-                        }`}
+                        className={`w-10 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${link.active ? 'bg-sky-500' : 'bg-slate-200'
+                          }`}
                       >
                         <div
-                          className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                            link.active ? 'translate-x-5' : 'translate-x-0'
-                          }`}
+                          className={`w-4 h-4 rounded-full bg-white transition-transform ${link.active ? 'translate-x-5' : 'translate-x-0'
+                            }`}
                         />
                       </button>
 
@@ -3890,14 +4408,12 @@ export default function BioLinkApp() {
                       showFooterBadge: !prev.showFooterBadge,
                     }))
                   }
-                  className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
-                    data.showFooterBadge ? 'bg-sky-500' : 'bg-slate-200'
-                  }`}
+                  className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${data.showFooterBadge ? 'bg-sky-500' : 'bg-slate-200'
+                    }`}
                 >
                   <div
-                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                      data.showFooterBadge ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${data.showFooterBadge ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </button>
               </div>
@@ -3939,9 +4455,7 @@ export default function BioLinkApp() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2.5">
-                  Layout
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-2.5">Layout</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {(
                     [
@@ -3959,11 +4473,10 @@ export default function BioLinkApp() {
                         onClick={() =>
                           updateDataWithHistory((prev) => ({ ...prev, headerLayout: layout.id }))
                         }
-                        className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer ${
-                          selected
-                            ? 'border-sky-500 ring-1 ring-sky-500 bg-sky-50/40'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
+                        className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer ${selected
+                          ? 'border-sky-500 ring-1 ring-sky-500 bg-sky-50/40'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
                       >
                         <div className="w-full h-14 rounded-xl bg-slate-100 mb-2.5 overflow-hidden flex items-center justify-center relative">
                           {layout.id === 'banner' && (
@@ -3993,9 +4506,7 @@ export default function BioLinkApp() {
                             />
                           )}
                         </div>
-                        <span className="text-xs font-semibold text-slate-800">
-                          {layout.label}
-                        </span>
+                        <span className="text-xs font-semibold text-slate-800">{layout.label}</span>
                       </button>
                     );
                   })}
@@ -4006,8 +4517,12 @@ export default function BioLinkApp() {
                 <div className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <span className="block text-xs font-semibold text-slate-900">Banner image / video</span>
-                      <span className="text-[11px] text-slate-500">Unggah gambar atau video untuk bagian atas.</span>
+                      <span className="block text-xs font-semibold text-slate-900">
+                        Banner image / video
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Unggah gambar atau video untuk bagian atas.
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -4027,9 +4542,19 @@ export default function BioLinkApp() {
                   {data.bannerUrl && (
                     <div className="relative h-20 overflow-hidden rounded-xl">
                       {data.bannerUrl.startsWith('data:video/') ? (
-                        <video src={data.bannerUrl} muted autoPlay loop className="h-full w-full object-cover" />
+                        <video
+                          src={data.bannerUrl}
+                          muted
+                          autoPlay
+                          loop
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
-                        <img src={data.bannerUrl} alt="Banner preview" className="h-full w-full object-cover" />
+                        <img
+                          src={data.bannerUrl}
+                          alt="Banner preview"
+                          className="h-full w-full object-cover"
+                        />
                       )}
                       <button
                         type="button"
@@ -4048,9 +4573,12 @@ export default function BioLinkApp() {
                         <button
                           key={hex}
                           type="button"
-                          onClick={() => updateDataWithHistory((prev) => ({ ...prev, bannerColor: hex }))}
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({ ...prev, bannerColor: hex }))
+                          }
                           style={{ backgroundColor: hex }}
-                          className={`size-7 rounded-full border-2 ${data.bannerColor === hex ? 'scale-110 border-slate-900' : 'border-white'}`}
+                          className={`size-7 rounded-full border-2 ${data.bannerColor === hex ? 'scale-110 border-slate-900' : 'border-white'
+                            }`}
                         />
                       ))}
                     </div>
@@ -4063,23 +4591,26 @@ export default function BioLinkApp() {
                   <div>
                     <p className="mb-2.5 text-xs font-semibold text-slate-800">Shape</p>
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                      {([
-                        ['circle', 'Circle'],
-                        ['loop', 'Loop'],
-                        ['flower', 'Flower'],
-                        ['oval', 'Oval'],
-                        ['rounded', 'Rounded'],
-                        ['burst', 'Burst'],
-                      ] as [ProfileShape, string][]).map(([shape, label]) => (
+                      {(
+                        [
+                          ['circle', 'Circle'],
+                          ['loop', 'Loop'],
+                          ['flower', 'Flower'],
+                          ['oval', 'Oval'],
+                          ['rounded', 'Rounded'],
+                          ['burst', 'Burst'],
+                        ] as [ProfileShape, string][]
+                      ).map(([shape, label]) => (
                         <button
                           key={shape}
                           type="button"
-                          onClick={() => updateDataWithHistory((prev) => ({ ...prev, profileShape: shape }))}
-                          className={`flex flex-col items-center gap-2 rounded-xl border p-2.5 text-[10px] font-semibold ${
-                            data.profileShape === shape
-                              ? 'border-sky-500 bg-sky-50/40 text-sky-700'
-                              : 'border-slate-200 text-slate-600'
-                          }`}
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({ ...prev, profileShape: shape }))
+                          }
+                          className={`flex flex-col items-center gap-2 rounded-xl border p-2.5 text-[10px] font-semibold ${data.profileShape === shape
+                            ? 'border-sky-500 bg-sky-50/40 text-sky-700'
+                            : 'border-slate-200 text-slate-600'
+                            }`}
                         >
                           <span
                             className="size-9 bg-slate-400"
@@ -4095,12 +4626,8 @@ export default function BioLinkApp() {
 
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <span className="text-xs font-semibold text-slate-800 block">
-                    Profile image
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Unggah foto profil baru
-                  </span>
+                  <span className="text-xs font-semibold text-slate-800 block">Profile image</span>
+                  <span className="text-[11px] text-slate-400">Unggah foto profil baru</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -4181,14 +4708,41 @@ export default function BioLinkApp() {
                 </div>
 
                 <div className="grid gap-2.5">
-                  {([
-                    { key: 'instagram', label: 'Instagram', icon: Instagram, placeholder: 'https://instagram.com/username' },
-                    { key: 'tiktok', label: 'TikTok', icon: Music2, placeholder: 'https://tiktok.com/@username' },
-                    { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, placeholder: '628123456789' },
-                    { key: 'youtube', label: 'YouTube', icon: Youtube, placeholder: 'https://youtube.com/@channel' },
-                    { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://example.com' },
-                    { key: 'email', label: 'Email', icon: Mail, placeholder: 'nama@email.com' },
-                  ] as const).map((social) => {
+                  {(
+                    [
+                      {
+                        key: 'instagram',
+                        label: 'Instagram',
+                        icon: Instagram,
+                        placeholder: 'https://instagram.com/username',
+                      },
+                      {
+                        key: 'tiktok',
+                        label: 'TikTok',
+                        icon: Music2,
+                        placeholder: 'https://tiktok.com/@username',
+                      },
+                      {
+                        key: 'whatsapp',
+                        label: 'WhatsApp',
+                        icon: MessageCircle,
+                        placeholder: '628123456789',
+                      },
+                      {
+                        key: 'youtube',
+                        label: 'YouTube',
+                        icon: Youtube,
+                        placeholder: 'https://youtube.com/@channel',
+                      },
+                      {
+                        key: 'website',
+                        label: 'Website',
+                        icon: Globe,
+                        placeholder: 'https://example.com',
+                      },
+                      { key: 'email', label: 'Email', icon: Mail, placeholder: 'nama@email.com' },
+                    ] as const
+                  ).map((social) => {
                     const Icon = social.icon;
                     const socialKey = social.key as keyof SocialChannels;
                     return (
@@ -4282,7 +4836,8 @@ export default function BioLinkApp() {
                   <h2 className="text-xl font-bold tracking-tight text-slate-900">
                     {designPanel === 'menu'
                       ? 'Design'
-                      : ({
+                      : (
+                        {
                           theme: 'Theme',
                           wallpaper: 'Wallpaper',
                           buttons: 'Buttons',
@@ -4290,7 +4845,8 @@ export default function BioLinkApp() {
                           colors: 'Colors',
                           stickers: 'Stickers',
                           footer: 'Footer',
-                        } as Record<Exclude<DesignPanel, 'menu'>, string>)[designPanel]}
+                        } as Record<Exclude<DesignPanel, 'menu'>, string>
+                      )[designPanel]}
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -4327,7 +4883,9 @@ export default function BioLinkApp() {
                     onClick={() => setDesignPanel('theme')}
                     className="flex w-full items-center gap-3.5 rounded-2xl border border-slate-200 px-4 py-3.5 text-left transition-colors hover:border-slate-300"
                   >
-                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-700 text-sm font-bold text-white">Aa</span>
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-slate-700 text-sm font-bold text-white">
+                      Aa
+                    </span>
                     <span className="flex-1 text-sm font-semibold text-slate-800">Theme</span>
                     <span className="text-xs text-slate-400">Custom</span>
                     <ChevronRight className="size-4 text-slate-400" />
@@ -4335,14 +4893,21 @@ export default function BioLinkApp() {
 
                   <div className="space-y-2.5">
                     <p className="text-xs font-semibold text-slate-500">Customize</p>
-                    {([
-                      ['wallpaper', 'Wallpaper', 'Solid Fill', '■'],
-                      ['buttons', 'Buttons', data.buttonVariant.charAt(0).toUpperCase() + data.buttonVariant.slice(1), '●'],
-                      ['text', 'Text', data.fontFamily, 'Aa'],
-                      ['colors', 'Colors', '', '▮'],
-                      ['stickers', 'Stickers', 'Decorate your page', '⌇'],
-                      ['footer', 'Footer', data.showFooterBadge ? 'Visible' : 'Hidden', '✣'],
-                    ] as [DesignPanel, string, string, string][]).map(([panel, label, detail, mark]) => (
+                    {(
+                      [
+                        ['wallpaper', 'Wallpaper', 'Solid Fill', '■'],
+                        [
+                          'buttons',
+                          'Buttons',
+                          data.buttonVariant.charAt(0).toUpperCase() + data.buttonVariant.slice(1),
+                          '●',
+                        ],
+                        ['text', 'Text', data.fontFamily, 'Aa'],
+                        ['colors', 'Colors', '', '▮'],
+                        ['stickers', 'Stickers', 'Decorate your page', '⌇'],
+                        ['footer', 'Footer', data.showFooterBadge ? 'Visible' : 'Hidden', '✣'],
+                      ] as [DesignPanel, string, string, string][]
+                    ).map(([panel, label, detail, mark]) => (
                       <button
                         key={panel}
                         type="button"
@@ -4350,14 +4915,22 @@ export default function BioLinkApp() {
                         className="flex w-full items-center gap-3.5 rounded-2xl border border-slate-200 px-4 py-3.5 text-left transition-colors hover:border-slate-300"
                       >
                         <span
-                          className={`grid size-11 shrink-0 place-items-center rounded-xl border text-base ${
+                          className={`grid size-11 shrink-0 place-items-center rounded-xl border text-base ${panel === 'wallpaper'
+                            ? 'border-slate-300'
+                            : panel === 'buttons'
+                              ? 'border-slate-200'
+                              : 'border-slate-200 bg-slate-50 text-slate-700'
+                            }`}
+                          style={
                             panel === 'wallpaper'
-                              ? 'border-slate-300'
+                              ? { backgroundColor: data.wallpaperColor }
                               : panel === 'buttons'
-                                ? 'border-slate-200'
-                                : 'border-slate-200 bg-slate-50 text-slate-700'
-                          }`}
-                          style={panel === 'wallpaper' ? { backgroundColor: data.wallpaperColor } : panel === 'buttons' ? { backgroundColor: data.buttonColor, color: data.buttonTextColor } : undefined}
+                                ? {
+                                  backgroundColor: data.buttonColor,
+                                  color: data.buttonTextColor,
+                                }
+                                : undefined
+                          }
                         >
                           {mark}
                         </span>
@@ -4373,13 +4946,42 @@ export default function BioLinkApp() {
               {designPanel === 'theme' && (
                 <div className="space-y-4">
                   <p className="text-xs leading-5 text-slate-500">
-                    Pilih preset tema untuk menerapkan kombinasi latar, tombol, dan tipografi sekaligus.
+                    Pilih preset tema untuk menerapkan kombinasi latar, tombol, dan tipografi
+                    sekaligus.
                   </p>
                   {[
-                    { name: 'Sky', wallpaper: '#F0F9FF', button: '#0EA5E9', buttonText: '#FFFFFF', titleText: '#0F172A', font: 'DM Sans' as FontChoice },
-                    { name: 'Midnight', wallpaper: '#0F172A', button: '#FFFFFF', buttonText: '#0F172A', titleText: '#FFFFFF', font: 'Inter' as FontChoice },
-                    { name: 'Blush', wallpaper: '#F5D5EA', button: '#18181B', buttonText: '#FFFFFF', titleText: '#0F172A', font: 'Plus Jakarta Sans' as FontChoice },
-                    { name: 'Espresso', wallpaper: '#433A31', button: '#F5DFC6', buttonText: '#433A31', titleText: '#FFFFFF', font: 'DM Sans' as FontChoice },
+                    {
+                      name: 'Sky',
+                      wallpaper: '#F0F9FF',
+                      button: '#0EA5E9',
+                      buttonText: '#FFFFFF',
+                      titleText: '#0F172A',
+                      font: 'DM Sans' as FontChoice,
+                    },
+                    {
+                      name: 'Midnight',
+                      wallpaper: '#0F172A',
+                      button: '#FFFFFF',
+                      buttonText: '#0F172A',
+                      titleText: '#FFFFFF',
+                      font: 'Inter' as FontChoice,
+                    },
+                    {
+                      name: 'Blush',
+                      wallpaper: '#F5D5EA',
+                      button: '#18181B',
+                      buttonText: '#FFFFFF',
+                      titleText: '#0F172A',
+                      font: 'Plus Jakarta Sans' as FontChoice,
+                    },
+                    {
+                      name: 'Espresso',
+                      wallpaper: '#433A31',
+                      button: '#F5DFC6',
+                      buttonText: '#433A31',
+                      titleText: '#FFFFFF',
+                      font: 'DM Sans' as FontChoice,
+                    },
                   ].map((theme) => (
                     <button
                       key={theme.name}
@@ -4396,7 +4998,10 @@ export default function BioLinkApp() {
                       }
                       className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-sky-300"
                     >
-                      <span className="h-14 w-20 rounded-xl border border-slate-200" style={{ backgroundColor: theme.wallpaper }} />
+                      <span
+                        className="h-14 w-20 rounded-xl border border-slate-200"
+                        style={{ backgroundColor: theme.wallpaper }}
+                      />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-slate-800">{theme.name}</p>
                         <p className="mt-1 text-[11px] text-slate-400">{theme.font}</p>
@@ -4414,11 +5019,19 @@ export default function BioLinkApp() {
                       <p className="text-sm font-semibold text-slate-800">Fill</p>
                       <p className="mt-1 text-xs text-slate-400">Warna latar halaman</p>
                     </div>
-                    <label className="size-10 cursor-pointer rounded-full border-2 border-white shadow ring-1 ring-slate-200" style={{ backgroundColor: data.wallpaperColor }}>
+                    <label
+                      className="size-10 cursor-pointer rounded-full border-2 border-white shadow ring-1 ring-slate-200"
+                      style={{ backgroundColor: data.wallpaperColor }}
+                    >
                       <input
                         type="color"
                         value={data.wallpaperColor}
-                        onChange={(e) => updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: e.target.value }))}
+                        onChange={(e) =>
+                          updateDataWithHistory((prev) => ({
+                            ...prev,
+                            wallpaperColor: e.target.value,
+                          }))
+                        }
                         className="sr-only"
                       />
                     </label>
@@ -4428,10 +5041,18 @@ export default function BioLinkApp() {
                       <button
                         key={swatch.hex}
                         type="button"
-                        onClick={() => updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: swatch.hex }))}
+                        onClick={() =>
+                          updateDataWithHistory((prev) => ({
+                            ...prev,
+                            wallpaperColor: swatch.hex,
+                          }))
+                        }
                         title={swatch.name}
                         style={{ backgroundColor: swatch.hex }}
-                        className={`aspect-square rounded-2xl border ${data.wallpaperColor.toUpperCase() === swatch.hex ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400' : 'border-slate-300'}`}
+                        className={`aspect-square rounded-2xl border ${data.wallpaperColor.toUpperCase() === swatch.hex
+                          ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400'
+                          : 'border-slate-300'
+                          }`}
                       />
                     ))}
                   </div>
@@ -4447,8 +5068,13 @@ export default function BioLinkApp() {
                         <button
                           key={variant}
                           type="button"
-                          onClick={() => updateDataWithHistory((prev) => ({ ...prev, buttonVariant: variant }))}
-                          className={`rounded-full border py-2.5 text-xs font-semibold capitalize ${data.buttonVariant === variant ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-200 text-slate-600'}`}
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({ ...prev, buttonVariant: variant }))
+                          }
+                          className={`rounded-full border py-2.5 text-xs font-semibold capitalize ${data.buttonVariant === variant
+                            ? 'border-sky-500 bg-sky-50 text-sky-700'
+                            : 'border-slate-200 text-slate-600'
+                            }`}
                         >
                           {variant}
                         </button>
@@ -4462,10 +5088,19 @@ export default function BioLinkApp() {
                         <button
                           key={swatch.bg}
                           type="button"
-                          onClick={() => updateDataWithHistory((prev) => ({ ...prev, buttonColor: swatch.bg, buttonTextColor: swatch.text }))}
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({
+                              ...prev,
+                              buttonColor: swatch.bg,
+                              buttonTextColor: swatch.text,
+                            }))
+                          }
                           title={swatch.name}
                           style={{ backgroundColor: swatch.bg }}
-                          className={`aspect-square rounded-full border ${data.buttonColor.toUpperCase() === swatch.bg ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400' : 'border-slate-300'}`}
+                          className={`aspect-square rounded-full border ${data.buttonColor.toUpperCase() === swatch.bg
+                            ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400'
+                            : 'border-slate-300'
+                            }`}
                         />
                       ))}
                     </div>
@@ -4475,32 +5110,62 @@ export default function BioLinkApp() {
 
               {designPanel === 'text' && (
                 <div className="space-y-3">
-                  {(['DM Sans', 'Inter', 'Plus Jakarta Sans', 'JetBrains Mono'] as FontChoice[]).map((font) => (
-                    <button
-                      key={font}
-                      type="button"
-                      onClick={() => updateDataWithHistory((prev) => ({ ...prev, fontFamily: font }))}
-                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 ${data.fontFamily === font ? 'border-sky-500 bg-sky-50/40' : 'border-slate-200'}`}
-                    >
-                      <span className="text-sm font-semibold text-slate-800">{font}</span>
-                      {data.fontFamily === font && <Check className="size-4 text-sky-600" />}
-                    </button>
-                  ))}
+                  {(['DM Sans', 'Inter', 'Plus Jakarta Sans', 'JetBrains Mono'] as FontChoice[]).map(
+                    (font) => (
+                      <button
+                        key={font}
+                        type="button"
+                        onClick={() =>
+                          updateDataWithHistory((prev) => ({ ...prev, fontFamily: font }))
+                        }
+                        className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 ${data.fontFamily === font
+                          ? 'border-sky-500 bg-sky-50/40'
+                          : 'border-slate-200'
+                          }`}
+                      >
+                        <span className="text-sm font-semibold text-slate-800">{font}</span>
+                        {data.fontFamily === font && <Check className="size-4 text-sky-600" />}
+                      </button>
+                    )
+                  )}
                 </div>
               )}
 
               {designPanel === 'colors' && (
                 <div className="space-y-4">
                   {[
-                    ['Title', data.titleColor, (color: string) => updateDataWithHistory((prev) => ({ ...prev, titleColor: color }))],
-                    ['Wallpaper', data.wallpaperColor, (color: string) => updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: color }))],
-                    ['Button', data.buttonColor, (color: string) => updateDataWithHistory((prev) => ({ ...prev, buttonColor: color }))],
+                    [
+                      'Title',
+                      data.titleColor,
+                      (color: string) =>
+                        updateDataWithHistory((prev) => ({ ...prev, titleColor: color })),
+                    ],
+                    [
+                      'Wallpaper',
+                      data.wallpaperColor,
+                      (color: string) =>
+                        updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: color })),
+                    ],
+                    [
+                      'Button',
+                      data.buttonColor,
+                      (color: string) =>
+                        updateDataWithHistory((prev) => ({ ...prev, buttonColor: color })),
+                    ],
                   ].map(([label, value, onChange]) => (
-                    <label key={String(label)} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                    <label
+                      key={String(label)}
+                      className="flex items-center justify-between rounded-2xl border border-slate-200 p-4"
+                    >
                       <span className="text-sm font-semibold text-slate-800">{String(label)}</span>
                       <span className="flex items-center gap-2">
-                        <span className="text-xs font-mono uppercase text-slate-500">{String(value)}</span>
-                        <span className="size-9 rounded-full border border-slate-300" style={{ backgroundColor: String(value) }} />
+                        <span className="text-xs font-mono uppercase text-slate-500">
+                          {String(value)}
+                        </span>
+                        <span
+                          className="size-9 rounded-full border border-slate-300"
+                          style={{ backgroundColor: String(value) }}
+                        />
                         <input
                           type="color"
                           value={String(value)}
@@ -4553,11 +5218,10 @@ export default function BioLinkApp() {
                               ].slice(-8),
                             }))
                           }
-                          className={`grid aspect-square place-items-center rounded-xl border text-2xl transition-transform hover:scale-105 ${
-                            data.stickers.some((item) => item.src === sticker)
-                              ? 'border-sky-500 bg-sky-50'
-                              : 'border-slate-200'
-                          } disabled:opacity-40`}
+                          className={`grid aspect-square place-items-center rounded-xl border text-2xl transition-transform hover:scale-105 ${data.stickers.some((item) => item.src === sticker)
+                            ? 'border-sky-500 bg-sky-50'
+                            : 'border-slate-200'
+                            } disabled:opacity-40`}
                         >
                           <img
                             src={sticker}
@@ -4591,30 +5255,35 @@ export default function BioLinkApp() {
 
                   {data.stickers.length > 0 && (
                     <div className="space-y-2">
-                    <div className="grid grid-cols-4 gap-2">
-                      {data.stickers.map((sticker, index) => (
-                        <div key={`${sticker.src}-${index}`} className="relative grid aspect-square place-items-center rounded-xl border border-slate-200 bg-slate-50 text-3xl">
-                          {sticker.src.startsWith('data:image/') ? (
-                            <img src={sticker.src} alt="" className="size-10 object-contain" />
-                          ) : (
-                            <span>{sticker.src}</span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateDataWithHistory((prev) => ({
-                                ...prev,
-                                stickers: prev.stickers.filter((_, stickerIndex) => stickerIndex !== index),
-                              }))
-                            }
-                            className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-white text-slate-400 shadow"
-                            title="Hapus sticker"
+                      <div className="grid grid-cols-4 gap-2">
+                        {data.stickers.map((sticker, index) => (
+                          <div
+                            key={`${sticker.src}-${index}`}
+                            className="relative grid aspect-square place-items-center rounded-xl border border-slate-200 bg-slate-50 text-3xl"
                           >
-                            <X className="size-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                            {sticker.src.startsWith('data:image/') ? (
+                              <img src={sticker.src} alt="" className="size-10 object-contain" />
+                            ) : (
+                              <span>{sticker.src}</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateDataWithHistory((prev) => ({
+                                  ...prev,
+                                  stickers: prev.stickers.filter(
+                                    (_, stickerIndex) => stickerIndex !== index
+                                  ),
+                                }))
+                              }
+                              className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-white text-slate-400 shadow"
+                              title="Hapus sticker"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4624,14 +5293,25 @@ export default function BioLinkApp() {
                 <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">Footer badge</p>
-                    <p className="mt-1 text-xs text-slate-400">Tampilkan tombol Join di bagian bawah.</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Tampilkan tombol Join di bagian bawah.
+                    </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => updateDataWithHistory((prev) => ({ ...prev, showFooterBadge: !prev.showFooterBadge }))}
-                    className={`h-6 w-11 rounded-full p-0.5 ${data.showFooterBadge ? 'bg-sky-500' : 'bg-slate-200'}`}
+                    onClick={() =>
+                      updateDataWithHistory((prev) => ({
+                        ...prev,
+                        showFooterBadge: !prev.showFooterBadge,
+                      }))
+                    }
+                    className={`h-6 w-11 rounded-full p-0.5 ${data.showFooterBadge ? 'bg-sky-500' : 'bg-slate-200'
+                      }`}
                   >
-                    <span className={`block size-5 rounded-full bg-white transition-transform ${data.showFooterBadge ? 'translate-x-5' : ''}`} />
+                    <span
+                      className={`block size-5 rounded-full bg-white transition-transform ${data.showFooterBadge ? 'translate-x-5' : ''
+                        }`}
+                    />
                   </button>
                 </div>
               )}
@@ -4641,9 +5321,8 @@ export default function BioLinkApp() {
 
         {/* RIGHT SIDE: LIVE PHONE PREVIEW */}
         <section
-          className={`flex-1 flex items-center justify-center py-4 lg:sticky lg:top-[72px] lg:h-[calc(100vh-72px)] lg:py-4 ${
-            mobileDashMode === 'editor' ? 'hidden lg:flex' : 'flex'
-          }`}
+          className={`flex-1 flex items-center justify-center py-4 lg:sticky lg:top-[72px] lg:h-[calc(100vh-72px)] lg:py-4 ${mobileDashMode === 'editor' ? 'hidden lg:flex' : 'flex'
+            }`}
         >
           <div className="flex items-center justify-center gap-3">
             <LivePhoneMockup
@@ -4784,6 +5463,71 @@ export default function BioLinkApp() {
               >
                 {editingLink ? 'Simpan Perubahan' : 'Tambahkan Link'}
               </button>
+
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Icon Kiri Link
+                  </label>
+                  {modalIconUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setModalIconUrl('')}
+                      className="text-[11px] font-medium text-rose-500 hover:underline cursor-pointer"
+                    >
+                      Reset ke otomatis
+                    </button>
+                  )}
+                </div>
+
+                {/* Grid Pilihan Icon Lucide */}
+                <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  {Object.entries(LINK_LUCIDE_ICONS).map(([key, { label, icon: IconComp }]) => {
+                    const token = `lucide:${key}`;
+                    const selected = modalIconUrl === token;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        title={label}
+                        onClick={() => setModalIconUrl(selected ? '' : token)}
+                        className={`h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${selected
+                            ? 'bg-sky-500 text-white shadow-2xs'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:border-sky-400 hover:text-sky-600'
+                          }`}
+                      >
+                        <IconComp className="w-4 h-4" />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Upload File Gambar atau Input URL Manual */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => linkIconInputRef.current?.click()}
+                    className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-400 hover:text-sky-600 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Upload
+                  </button>
+                  <input
+                    ref={linkIconInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLinkIconUpload}
+                    className="hidden"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Atau tempel URL icon / kosongkan untuk otomatis"
+                    value={modalIconUrl.startsWith('lucide:') ? '' : modalIconUrl}
+                    onChange={(e) => setModalIconUrl(e.target.value)}
+                    className="min-w-0 flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                  />
+                </div>
+              </div>
             </form>
           </div>
         </div>
@@ -4843,7 +5587,10 @@ export default function BioLinkApp() {
                 type="button"
                 onClick={async () => {
                   if (navigator.share) {
-                    await navigator.share({ title: activeShareLink.title, url: activeShareLink.url });
+                    await navigator.share({
+                      title: activeShareLink.title,
+                      url: activeShareLink.url,
+                    });
                   } else {
                     navigator.clipboard?.writeText(activeShareLink.url);
                     showToast('Link disalin');
