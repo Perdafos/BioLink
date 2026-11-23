@@ -278,6 +278,71 @@ const getLinkPreviewUrl = (link: LinkItem) => {
   }
 };
 
+const getLinkPreviewCandidates = (link: LinkItem): string[] => {
+  const candidates: string[] = [];
+  if (link.thumbnailUrl?.trim()) candidates.push(link.thumbnailUrl.trim());
+
+  try {
+    const target = new URL(link.url);
+    if (['http:', 'https:'].includes(target.protocol)) {
+      candidates.push(
+        `https://api.microlink.io/?url=${encodeURIComponent(target.toString())}&screenshot=true&meta=false&embed=screenshot.url`
+      );
+      candidates.push(
+        `https://image.thum.io/get/width/600/crop/900/${encodeURIComponent(target.toString())}`
+      );
+    }
+  } catch {
+    return candidates;
+  }
+
+  return [...new Set(candidates)];
+};
+
+const LinkPreviewImage: React.FC<{
+  link: LinkItem;
+  className?: string;
+  fallbackClassName?: string;
+}> = ({ link, className = 'w-full h-32 object-cover', fallbackClassName = 'h-32' }) => {
+  const candidates = getLinkPreviewCandidates(link);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [failed, setFailed] = useState(candidates.length === 0);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+    setFailed(candidates.length === 0);
+  }, [link.url, link.thumbnailUrl]);
+
+  if (failed || candidates.length === 0) {
+    const icon = getLinkIconUrl(link);
+    return (
+      <div className={`grid place-items-center bg-slate-100 ${fallbackClassName}`}>
+        {icon ? (
+          <img src={icon} alt="" className="size-12 rounded-xl object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <Globe className="size-7 text-slate-400" />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={candidates[candidateIndex]}
+      alt={`Preview ${link.title}`}
+      className={className}
+      referrerPolicy="no-referrer"
+      onError={() => {
+        if (candidateIndex + 1 < candidates.length) {
+          setCandidateIndex((index) => index + 1);
+        } else {
+          setFailed(true);
+        }
+      }}
+    />
+  );
+};
+
 const normalizeStickers = (value: unknown): StickerItem[] => {
   if (!Array.isArray(value)) return [];
   return value
@@ -788,11 +853,9 @@ const LivePhoneMockup: React.FC<{
                         onClick={() => onLinkClick?.(link.id)}
                         className="block"
                       >
-                        <img
-                          src={getLinkPreviewUrl(link)!}
-                          alt={`Preview ${link.title}`}
+                        <LinkPreviewImage
+                          link={link}
                           className="w-full h-32 object-cover"
-                          referrerPolicy="no-referrer"
                         />
                       </a>
                     )}
@@ -1795,10 +1858,10 @@ export default function BioLinkApp() {
 
               <div className="rounded-2xl bg-slate-900 text-white p-4 text-center">
                 {getLinkPreviewUrl(activeShareLink) ? (
-                  <img
-                    src={getLinkPreviewUrl(activeShareLink)!}
-                    alt=""
+                  <LinkPreviewImage
+                    link={activeShareLink}
                     className="w-full h-32 rounded-xl object-cover mb-3"
+                    fallbackClassName="h-32 rounded-xl mb-3"
                   />
                 ) : getLinkIconUrl(activeShareLink) ? (
                   <img
@@ -4748,11 +4811,10 @@ export default function BioLinkApp() {
 
             <div className="rounded-2xl bg-slate-900 text-white p-4 text-center">
               {getLinkPreviewUrl(activeShareLink) ? (
-                <img
-                  src={getLinkPreviewUrl(activeShareLink)!}
-                  alt=""
+                <LinkPreviewImage
+                  link={activeShareLink}
                   className="w-full h-32 rounded-xl object-cover mb-3"
-                  referrerPolicy="no-referrer"
+                  fallbackClassName="h-32 rounded-xl mb-3"
                 />
               ) : getLinkIconUrl(activeShareLink) ? (
                 <img
