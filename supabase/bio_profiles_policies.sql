@@ -3,6 +3,27 @@
 
 alter table public.bio_profiles enable row level security;
 
+-- bio_profiles.id is now the page ID, not a foreign key to auth.users.
+-- Remove the old one-profile-per-user constraint when it exists.
+do $$
+declare
+  constraint_record record;
+begin
+  for constraint_record in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.bio_profiles'::regclass
+      and contype = 'f'
+      and confrelid = 'auth.users'::regclass
+  loop
+    execute format(
+      'alter table public.bio_profiles drop constraint %I',
+      constraint_record.conname
+    );
+  end loop;
+end;
+$$;
+
 alter table public.bio_profiles
   add column if not exists owner_id uuid;
 
@@ -15,6 +36,23 @@ alter table public.bio_profiles
 
 alter table public.bio_profiles
   alter column owner_id set default auth.uid();
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.bio_profiles'::regclass
+      and conname = 'bio_profiles_owner_id_fkey'
+  ) then
+    alter table public.bio_profiles
+      add constraint bio_profiles_owner_id_fkey
+      foreign key (owner_id)
+      references auth.users(id)
+      on delete cascade;
+  end;
+end;
+$$;
 
 create index if not exists bio_profiles_owner_id_idx
   on public.bio_profiles(owner_id);
