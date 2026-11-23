@@ -2990,7 +2990,6 @@ export default function BioLinkApp() {
                 </div>
               )}
             </div>
-            <Bell className="ml-auto size-4 text-slate-500" />
           </div>
 
           <nav className="flex-1 px-3 py-2">
