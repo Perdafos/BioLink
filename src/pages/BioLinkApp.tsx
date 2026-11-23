@@ -40,6 +40,7 @@ import {
   PanelLeft,
   Download,
   Phone,
+  Eye,
 } from 'lucide-react';
 import { BrandMark } from '../components/atoms/BrandMark';
 import { ToastNotification } from '../components/molecules/ToastNotification';
@@ -416,6 +417,7 @@ const LivePhoneMockup: React.FC<{
   stickersDraggable = false,
 }) => {
   const [selectedStickerIndex, setSelectedStickerIndex] = useState<number | null>(null);
+  const [openPreviewLinkId, setOpenPreviewLinkId] = useState<string | null>(null);
   const lightBg = isColorLight(data.wallpaperColor);
   const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
   const subTextColor = lightBg ? '#475569' : '#E2E8F0';
@@ -832,6 +834,31 @@ const LivePhoneMockup: React.FC<{
                           {link.title}
                         </span>
                       </a>
+                      {openPreviewLinkId === link.id && getLinkPreviewUrl(link) && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setOpenPreviewLinkId((current) =>
+                              current === link.id ? null : link.id
+                            );
+                          }}
+                          className={`w-8 h-8 ml-1 shrink-0 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                            openPreviewLinkId === link.id
+                              ? 'bg-white/15 opacity-100'
+                              : 'opacity-60 hover:opacity-100 hover:bg-white/10'
+                          }`}
+                          title={openPreviewLinkId === link.id ? 'Sembunyikan preview' : 'Tampilkan preview'}
+                          aria-label={
+                            openPreviewLinkId === link.id
+                              ? `Sembunyikan preview ${link.title}`
+                              : `Tampilkan preview ${link.title}`
+                          }
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={(event) => {
