@@ -278,6 +278,7 @@ const normalizeStickers = (value: unknown): StickerItem[] => {
   return value
     .map((item, index) => {
       if (typeof item === 'string') {
+        if (!item.startsWith('http') && !item.startsWith('data:image/')) return null;
         return {
           src: item,
           x: index % 2 === 0 ? 12 : 82,
@@ -301,6 +302,24 @@ const normalizeStickers = (value: unknown): StickerItem[] => {
     .slice(0, 8);
 };
 
+const OPEN_STICKERS = [
+  'https://openstickers.craftwork.design/img/it-1.png',
+  'https://openstickers.craftwork.design/img/it-2.png',
+  'https://openstickers.craftwork.design/img/it-3.png',
+  'https://openstickers.craftwork.design/img/it-4.png',
+  'https://openstickers.craftwork.design/img/it-5.png',
+  'https://openstickers.craftwork.design/img/nature-1.png',
+  'https://openstickers.craftwork.design/img/nature-2.png',
+  'https://openstickers.craftwork.design/img/nature-3.png',
+  'https://openstickers.craftwork.design/img/life-1.png',
+  'https://openstickers.craftwork.design/img/life-2.png',
+  'https://openstickers.craftwork.design/img/life-3.png',
+  'https://openstickers.craftwork.design/img/life-4.png',
+  'https://openstickers.craftwork.design/img/shape-1.png',
+  'https://openstickers.craftwork.design/img/shape-2.png',
+  'https://openstickers.craftwork.design/img/shape-3.png',
+];
+
 // --- REUSABLE LIVE PHONE PREVIEW COMPONENT ---
 
 const LivePhoneMockup: React.FC<{
@@ -311,6 +330,8 @@ const LivePhoneMockup: React.FC<{
   onLinkClick?: (id: string) => void;
   onShareLink?: (link: LinkItem) => void;
   onStickerMove?: (index: number, x: number, y: number) => void;
+  onStickerScale?: (index: number, scale: number) => void;
+  onStickerDelete?: (index: number) => void;
   stickersDraggable?: boolean;
 }> = ({
   data,
@@ -320,8 +341,11 @@ const LivePhoneMockup: React.FC<{
   onLinkClick,
   onShareLink,
   onStickerMove,
+  onStickerScale,
+  onStickerDelete,
   stickersDraggable = false,
 }) => {
+  const [selectedStickerIndex, setSelectedStickerIndex] = useState<number | null>(null);
   const lightBg = isColorLight(data.wallpaperColor);
   const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
   const subTextColor = lightBg ? '#475569' : '#E2E8F0';
@@ -341,6 +365,10 @@ const LivePhoneMockup: React.FC<{
 
   return (
     <div
+      data-live-phone
+      onPointerDown={() => {
+        if (stickersDraggable) setSelectedStickerIndex(null);
+      }}
       style={{
         backgroundColor: data.wallpaperColor,
         transform: tilted3D
@@ -362,14 +390,30 @@ const LivePhoneMockup: React.FC<{
             onPointerDown={(event) => {
               if (!stickersDraggable) return;
               event.preventDefault();
+              event.stopPropagation();
+              setSelectedStickerIndex(index);
               event.currentTarget.setPointerCapture(event.pointerId);
+
+              const phone = event.currentTarget.closest('[data-live-phone]')?.getBoundingClientRect();
+              const stickerRect = event.currentTarget.getBoundingClientRect();
+              if (!phone) return;
+              event.currentTarget.dataset.dragOffsetX = String(
+                event.clientX - (stickerRect.left + stickerRect.width / 2)
+              );
+              event.currentTarget.dataset.dragOffsetY = String(
+                event.clientY - (stickerRect.top + stickerRect.height / 2)
+              );
             }}
             onPointerMove={(event) => {
               if (!stickersDraggable || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-              const parent = event.currentTarget.parentElement?.getBoundingClientRect();
-              if (!parent) return;
-              const x = ((event.clientX - parent.left) / parent.width) * 100;
-              const y = ((event.clientY - parent.top) / parent.height) * 100;
+              const phone = event.currentTarget.closest('[data-live-phone]')?.getBoundingClientRect();
+              if (!phone) return;
+              const offsetX = Number(event.currentTarget.dataset.dragOffsetX || 0);
+              const offsetY = Number(event.currentTarget.dataset.dragOffsetY || 0);
+              const centerX = event.clientX - offsetX;
+              const centerY = event.clientY - offsetY;
+              const x = ((centerX - phone.left) / phone.width) * 100;
+              const y = ((centerY - phone.top) / phone.height) * 100;
               onStickerMove?.(
                 index,
                 Math.max(4, Math.min(96, x)),
@@ -381,7 +425,7 @@ const LivePhoneMockup: React.FC<{
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
             }}
-            className={`absolute z-20 grid size-12 place-items-center text-[32px] drop-shadow-md ${
+            className={`absolute z-20 grid size-12 place-items-center ${
               stickersDraggable ? 'cursor-grab touch-none active:cursor-grabbing' : 'pointer-events-none'
             }`}
             style={{
@@ -390,10 +434,73 @@ const LivePhoneMockup: React.FC<{
               transform: `translate(-50%, -50%) scale(${sticker.scale})`,
             }}
           >
-            {sticker.src.startsWith('data:image/') ? (
-              <img src={sticker.src} alt="" className="size-full object-contain" />
+            {sticker.src.startsWith('data:image/') || sticker.src.startsWith('http') ? (
+              <img src={sticker.src} alt="" className="size-full object-contain drop-shadow-md" draggable={false} />
             ) : (
-              <span>{sticker.src}</span>
+              <span className="text-[32px]">{sticker.src}</span>
+            )}
+
+            {stickersDraggable && selectedStickerIndex === index && (
+              <>
+                <div className="pointer-events-none absolute -inset-2 border border-dashed border-sky-500">
+                  {[
+                    'left-[-5px] top-[-5px]',
+                    'right-[-5px] top-[-5px]',
+                    'bottom-[-5px] left-[-5px]',
+                    'bottom-[-5px] right-[-5px]',
+                  ].map((position, handleIndex) => (
+                    <span
+                      key={position}
+                      onPointerDown={(event) => {
+                        event.stopPropagation();
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        const stickerRect = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
+                        if (!stickerRect) return;
+                        const centerX = stickerRect.left + stickerRect.width / 2;
+                        const centerY = stickerRect.top + stickerRect.height / 2;
+                        event.currentTarget.dataset.startDistance = String(
+                          Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY))
+                        );
+                        event.currentTarget.dataset.startScale = String(sticker.scale);
+                        event.currentTarget.dataset.handleIndex = String(handleIndex);
+                      }}
+                      onPointerMove={(event) => {
+                        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+                        const stickerRect = event.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
+                        if (!stickerRect) return;
+                        const centerX = stickerRect.left + stickerRect.width / 2;
+                        const centerY = stickerRect.top + stickerRect.height / 2;
+                        const distance = Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY));
+                        const startDistance = Number(event.currentTarget.dataset.startDistance || distance);
+                        const startScale = Number(event.currentTarget.dataset.startScale || sticker.scale);
+                        onStickerScale?.(
+                          index,
+                          Math.max(0.6, Math.min(2.4, startScale * (distance / startDistance)))
+                        );
+                      }}
+                      onPointerUp={(event) => {
+                        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                          event.currentTarget.releasePointerCapture(event.pointerId);
+                        }
+                      }}
+                      className={`pointer-events-auto absolute size-2.5 rounded-sm border border-sky-600 bg-white ${position}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelectedStickerIndex(null);
+                    onStickerDelete?.(index);
+                  }}
+                  className="pointer-events-auto absolute left-1/2 top-[calc(100%+10px)] grid size-8 -translate-x-1/2 place-items-center rounded-full bg-white text-rose-500 shadow-md ring-1 ring-slate-200"
+                  title="Hapus sticker"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </>
             )}
           </div>
         ))}
@@ -4357,9 +4464,19 @@ export default function BioLinkApp() {
                   </div>
 
                   <div>
-                    <p className="mb-2.5 text-xs font-semibold text-slate-700">This way!</p>
+                    <div className="mb-2.5 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-700">Open Stickers</p>
+                      <a
+                        href="https://openstickers.craftwork.design/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] font-semibold text-sky-600"
+                      >
+                        by Craftwork
+                      </a>
+                    </div>
                     <div className="grid grid-cols-5 gap-2">
-                      {['➜', '↘', '↗', '↙', '⬇', '👉', '👆', '👇', '🡅', '✨'].map((sticker) => (
+                      {OPEN_STICKERS.map((sticker) => (
                         <button
                           key={sticker}
                           type="button"
@@ -4384,7 +4501,12 @@ export default function BioLinkApp() {
                               : 'border-slate-200'
                           } disabled:opacity-40`}
                         >
-                          {sticker}
+                          <img
+                            src={sticker}
+                            alt=""
+                            className="size-10 object-contain"
+                            draggable={false}
+                          />
                         </button>
                       ))}
                     </div>
@@ -4504,6 +4626,20 @@ export default function BioLinkApp() {
                   stickers: prev.stickers.map((sticker, stickerIndex) =>
                     stickerIndex === index ? { ...sticker, x, y } : sticker
                   ),
+                }))
+              }
+              onStickerScale={(index, scale) =>
+                setData((prev) => ({
+                  ...prev,
+                  stickers: prev.stickers.map((sticker, stickerIndex) =>
+                    stickerIndex === index ? { ...sticker, scale } : sticker
+                  ),
+                }))
+              }
+              onStickerDelete={(index) =>
+                updateDataWithHistory((prev) => ({
+                  ...prev,
+                  stickers: prev.stickers.filter((_, stickerIndex) => stickerIndex !== index),
                 }))
               }
             />
