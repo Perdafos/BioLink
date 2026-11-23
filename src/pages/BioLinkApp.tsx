@@ -1552,6 +1552,49 @@ export default function BioLinkApp() {
     setStep('dashboard');
   };
 
+  const deleteProfile = async (profileId: string) => {
+    if (!userId) {
+      showToast('Anda harus masuk terlebih dahulu');
+      return;
+    }
+
+    if (profiles.length <= 1) {
+      showToast('Minimal satu Linktree harus tetap tersedia');
+      return;
+    }
+
+    const profileToDelete = profiles.find((profile) => profile.id === profileId);
+    const profileName =
+      profileToDelete?.display_name?.trim() ||
+      profileToDelete?.username ||
+      'Linktree ini';
+
+    if (!window.confirm(`Hapus "${profileName}"? Tindakan ini tidak dapat dibatalkan.`)) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('bio_profiles')
+      .delete()
+      .eq('id', profileId)
+      .eq('owner_id', userId);
+
+    if (error) {
+      showToast(`Gagal menghapus Linktree: ${error.message}`);
+      return;
+    }
+
+    const remainingProfiles = profiles.filter((profile) => profile.id !== profileId);
+    setProfiles(remainingProfiles);
+
+    if (profileId === activeProfileId && remainingProfiles[0]) {
+      setActiveProfileId(null);
+      await switchProfile(remainingProfiles[0].id);
+    }
+
+    showToast('Linktree berhasil dihapus');
+  };
+
   // Cek sesi login saat halaman dimuat
   useEffect(() => {
     let mounted = true;
@@ -4104,15 +4147,16 @@ export default function BioLinkApp() {
                             isActive ? 'bg-[#4d6688]' : 'bg-[#607784]'
                           }`}
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void (isActive
-                                ? setDashboardView('editor')
-                                : switchProfile(profile.id, true))
-                            }
-                            className="w-full"
-                          >
+                          <div className="w-full">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void (isActive
+                                  ? setDashboardView('editor')
+                                  : switchProfile(profile.id, true))
+                              }
+                              className="w-full text-left cursor-pointer"
+                            >
                             <div
                               className="relative h-[228px] overflow-hidden"
                               style={{
@@ -4132,20 +4176,35 @@ export default function BioLinkApp() {
                                 </p>
                               </div>
                             </div>
+                            </button>
                             <div className="flex h-[50px] items-center justify-between px-3">
                               <span className="min-w-0 truncate text-[13px] font-bold">
                                 {profileName}
                               </span>
                               <div className="flex shrink-0 items-center gap-1.5">
-                                <span className="grid size-7 place-items-center rounded-full bg-white/15">
-                                  <Share2 className="size-3.5" />
-                                </span>
-                                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={() => void deleteProfile(profile.id)}
+                                  className="grid size-7 place-items-center rounded-full bg-white/15 text-white hover:bg-rose-500 cursor-pointer"
+                                  aria-label={`Hapus ${profileName}`}
+                                  title="Hapus Linktree"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void (isActive
+                                      ? setDashboardView('editor')
+                                      : switchProfile(profile.id, true))
+                                  }
+                                  className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 cursor-pointer"
+                                >
                                   Edit
-                                </span>
+                                </button>
                               </div>
                             </div>
-                          </button>
+                          </div>
                         </Card>
                       );
                     })}
