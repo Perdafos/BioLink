@@ -1681,21 +1681,8 @@ export default function BioLinkApp() {
       if (mounted) setAuthLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUserId(session.user.id);
-        setAuthProvider(session.user.app_metadata?.provider || 'email');
-        const metadata = session.user.user_metadata || {};
-        await loadUserProfile(
-          session.user.id,
-          session.user.email || '',
-          undefined,
-          false,
-          metadata.full_name || metadata.name || metadata.display_name,
-          metadata.avatar_url || metadata.picture,
-        );
-        setAuthLoading(false);
-      } else if (event === 'SIGNED_OUT') {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
         setUserId(null);
         setData(INITIAL_STATE);
         setAccountName('John Doe');
