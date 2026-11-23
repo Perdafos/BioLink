@@ -111,6 +111,7 @@ interface BioPageState {
   noIndex: boolean;
   socials: SocialChannels;
   links: LinkItem[];
+  stickers: string[];
 }
 
 // --- SOLID COLOR PALETTES (ZERO GRADIENTS) ---
@@ -184,6 +185,7 @@ const INITIAL_STATE: BioPageState = {
     email: '',
   },
   links: [],
+  stickers: [],
 };
 
 // Helper to determine if background hex is light or dark
@@ -195,6 +197,23 @@ function isColorLight(hex: string): boolean {
   const b = parseInt(clean.substring(4, 6), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.62;
+}
+
+function hasGoodContrast(foreground: string, background: string): boolean {
+  const luminance = (hex: string) => {
+    const clean = hex.replace('#', '');
+    if (clean.length !== 6) return 0;
+    const channels = [0, 2, 4].map((offset) => {
+      const value = parseInt(clean.substring(offset, offset + 2), 16) / 255;
+      return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const foregroundLuminance = luminance(foreground);
+  const backgroundLuminance = luminance(background);
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05) >= 3;
 }
 
 function getProfileShapeStyle(shape: ProfileShape): React.CSSProperties {
@@ -267,10 +286,10 @@ const LivePhoneMockup: React.FC<{
   const lightBg = isColorLight(data.wallpaperColor);
   const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
   const subTextColor = lightBg ? '#475569' : '#E2E8F0';
-  const resolvedTitleColor =
-    data.headerLayout === 'hero'
-      ? '#FFFFFF'
-      : data.titleColor || autoTextColor;
+  const requestedTitleColor = data.titleColor || autoTextColor;
+  const resolvedTitleColor = hasGoodContrast(requestedTitleColor, data.wallpaperColor)
+    ? requestedTitleColor
+    : autoTextColor;
 
   const fontClass =
     data.fontFamily === 'JetBrains Mono'
@@ -298,6 +317,22 @@ const LivePhoneMockup: React.FC<{
 
       {/* Scrollable Phone Interior */}
       <div className="h-full overflow-y-auto flex flex-col justify-between pb-6">
+        {data.stickers.map((sticker, index) => (
+          <div
+            key={`${sticker}-${index}`}
+            className="pointer-events-none absolute z-20 grid size-12 place-items-center text-[32px] drop-shadow-md"
+            style={{
+              left: `${index % 2 === 0 ? 10 : 78}%`,
+              top: `${48 + (index % 4) * 96}px`,
+            }}
+          >
+            {sticker.startsWith('data:image/') ? (
+              <img src={sticker} alt="" className="size-full object-contain" />
+            ) : (
+              <span>{sticker}</span>
+            )}
+          </div>
+        ))}
         <div>
           {/* HEADER LAYOUT: CLASSIC / BANNER / HERO */}
           {data.headerLayout === 'banner' && (
@@ -738,6 +773,7 @@ export default function BioLinkApp() {
   const [publicProfileError, setPublicProfileError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const stickerInputRef = useRef<HTMLInputElement | null>(null);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const isHydratingRef = useRef<boolean>(false);
 
@@ -808,6 +844,7 @@ export default function BioLinkApp() {
           no_index: boolean | null;
           socials: SocialChannels | null;
           links: LinkItem[] | null;
+          stickers: string[] | null;
         };
 
         setPublicProfile({
@@ -832,6 +869,7 @@ export default function BioLinkApp() {
           noIndex: publicProfileRow.no_index ?? false,
           socials: { ...INITIAL_STATE.socials, ...(publicProfileRow.socials || {}) },
           links: Array.isArray(publicProfileRow.links) ? publicProfileRow.links : [],
+          stickers: Array.isArray(publicProfileRow.stickers) ? publicProfileRow.stickers : [],
         });
         setPublicProfileLoading(false);
       });
@@ -912,6 +950,7 @@ export default function BioLinkApp() {
           noIndex: profile.no_index ?? false,
           socials: { ...INITIAL_STATE.socials, ...(profile.socials || {}) },
           links: Array.isArray(profile.links) ? profile.links : [],
+          stickers: Array.isArray(profile.stickers) ? profile.stickers : [],
         });
         setStep(isNewAccount ? 'step-links' : 'dashboard');
       } else {
@@ -949,6 +988,7 @@ export default function BioLinkApp() {
           no_index: newProfile.noIndex,
           socials: newProfile.socials,
           links: newProfile.links,
+          stickers: newProfile.stickers,
         });
 
         if (insertError) {
@@ -1029,6 +1069,7 @@ export default function BioLinkApp() {
           no_index: data.noIndex,
           socials: data.socials,
           links: data.links,
+          stickers: data.stickers,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
@@ -1187,6 +1228,29 @@ export default function BioLinkApp() {
         }));
         showToast('Foto profil diperbarui');
       }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleStickerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Pilih file gambar untuk sticker');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      showToast('Ukuran sticker maksimal 3 MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+      updateDataWithHistory((prev) => ({
+        ...prev,
+        stickers: [...prev.stickers, reader.result as string].slice(-8),
+      }));
+      showToast('Sticker ditambahkan');
     };
     reader.readAsDataURL(file);
   };
@@ -4065,10 +4129,10 @@ export default function BioLinkApp() {
                     Pilih preset tema untuk menerapkan kombinasi latar, tombol, dan tipografi sekaligus.
                   </p>
                   {[
-                    { name: 'Sky', wallpaper: '#F0F9FF', button: '#0EA5E9', text: '#0F172A', font: 'DM Sans' as FontChoice },
-                    { name: 'Midnight', wallpaper: '#0F172A', button: '#FFFFFF', text: '#FFFFFF', font: 'Inter' as FontChoice },
-                    { name: 'Blush', wallpaper: '#F5D5EA', button: '#18181B', text: '#0F172A', font: 'Plus Jakarta Sans' as FontChoice },
-                    { name: 'Espresso', wallpaper: '#433A31', button: '#F5DFC6', text: '#FFFFFF', font: 'DM Sans' as FontChoice },
+                    { name: 'Sky', wallpaper: '#F0F9FF', button: '#0EA5E9', buttonText: '#FFFFFF', titleText: '#0F172A', font: 'DM Sans' as FontChoice },
+                    { name: 'Midnight', wallpaper: '#0F172A', button: '#FFFFFF', buttonText: '#0F172A', titleText: '#FFFFFF', font: 'Inter' as FontChoice },
+                    { name: 'Blush', wallpaper: '#F5D5EA', button: '#18181B', buttonText: '#FFFFFF', titleText: '#0F172A', font: 'Plus Jakarta Sans' as FontChoice },
+                    { name: 'Espresso', wallpaper: '#433A31', button: '#F5DFC6', buttonText: '#433A31', titleText: '#FFFFFF', font: 'DM Sans' as FontChoice },
                   ].map((theme) => (
                     <button
                       key={theme.name}
@@ -4078,8 +4142,8 @@ export default function BioLinkApp() {
                           ...prev,
                           wallpaperColor: theme.wallpaper,
                           buttonColor: theme.button,
-                          buttonTextColor: theme.text,
-                          titleColor: theme.text,
+                          buttonTextColor: theme.buttonText,
+                          titleColor: theme.titleText,
                           fontFamily: theme.font,
                         }))
                       }
@@ -4203,10 +4267,94 @@ export default function BioLinkApp() {
               )}
 
               {designPanel === 'stickers' && (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center">
-                  <Sparkles className="mx-auto size-7 text-sky-500" />
-                  <p className="mt-3 text-sm font-semibold text-slate-800">Sticker decoration</p>
-                  <p className="mt-1 text-xs text-slate-400">Stiker dekoratif akan ditambahkan pada pembaruan berikutnya.</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Decorate your page</p>
+                      <p className="mt-1 text-xs text-slate-400">Pilih hingga 8 sticker.</p>
+                    </div>
+                    {data.stickers.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => updateDataWithHistory((prev) => ({ ...prev, stickers: [] }))}
+                        className="text-xs font-semibold text-slate-500 hover:text-rose-600"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="mb-2.5 text-xs font-semibold text-slate-700">This way!</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {['➜', '↘', '↗', '↙', '⬇', '👉', '👆', '👇', '🡅', '✨'].map((sticker) => (
+                        <button
+                          key={sticker}
+                          type="button"
+                          disabled={data.stickers.length >= 8}
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({
+                              ...prev,
+                              stickers: [...prev.stickers, sticker].slice(-8),
+                            }))
+                          }
+                          className={`grid aspect-square place-items-center rounded-xl border text-2xl transition-transform hover:scale-105 ${
+                            data.stickers.includes(sticker)
+                              ? 'border-sky-500 bg-sky-50'
+                              : 'border-slate-200'
+                          } disabled:opacity-40`}
+                        >
+                          {sticker}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Sticker upload</p>
+                    <button
+                      type="button"
+                      onClick={() => stickerInputRef.current?.click()}
+                      disabled={data.stickers.length >= 8}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-5 text-xs font-semibold text-slate-600 hover:border-sky-400 hover:text-sky-600 disabled:opacity-40"
+                    >
+                      <Upload className="size-4" /> Upload sticker PNG
+                    </button>
+                    <input
+                      ref={stickerInputRef}
+                      type="file"
+                      accept="image/png,image/webp,image/svg+xml"
+                      onChange={handleStickerUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {data.stickers.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {data.stickers.map((sticker, index) => (
+                        <div key={`${sticker}-${index}`} className="relative grid aspect-square place-items-center rounded-xl border border-slate-200 bg-slate-50 text-3xl">
+                          {sticker.startsWith('data:image/') ? (
+                            <img src={sticker} alt="" className="size-10 object-contain" />
+                          ) : (
+                            <span>{sticker}</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateDataWithHistory((prev) => ({
+                                ...prev,
+                                stickers: prev.stickers.filter((_, stickerIndex) => stickerIndex !== index),
+                              }))
+                            }
+                            className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-white text-slate-400 shadow"
+                            title="Hapus sticker"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
