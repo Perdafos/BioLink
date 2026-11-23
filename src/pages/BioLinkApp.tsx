@@ -57,6 +57,7 @@ type DashboardSection =
   | 'messaging'
   | 'audience'
   | 'insights'
+  | 'discoverability'
   | 'business-cards'
   | 'social-planner'
   | 'instagram-auto-reply'
@@ -73,6 +74,8 @@ interface LinkItem {
   url: string;
   active: boolean;
   clicks: number;
+  thumbnailUrl?: string;
+  iconUrl?: string;
 }
 
 interface SocialChannels {
@@ -98,6 +101,9 @@ interface BioPageState {
   buttonVariant: ButtonVariant;
   fontFamily: FontChoice;
   showFooterBadge: boolean;
+  seoTitle: string;
+  seoDescription: string;
+  noIndex: boolean;
   socials: SocialChannels;
   links: LinkItem[];
 }
@@ -159,6 +165,9 @@ const INITIAL_STATE: BioPageState = {
   buttonVariant: 'solid',
   fontFamily: 'DM Sans',
   showFooterBadge: true,
+  seoTitle: '',
+  seoDescription: '',
+  noIndex: false,
   socials: {
     instagram: '',
     tiktok: '',
@@ -197,6 +206,22 @@ const SolidQRCode: React.FC<{ url: string }> = ({ url }) => (
   </div>
 );
 
+const getLinkIconUrl = (link: LinkItem) => {
+  if (link.iconUrl?.trim()) return link.iconUrl.trim();
+  try {
+    const host = new URL(link.url).hostname;
+    if (!host) return null;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+  } catch {
+    return null;
+  }
+};
+
+const getLinkPreviewUrl = (link: LinkItem) => {
+  if (link.thumbnailUrl?.trim()) return link.thumbnailUrl.trim();
+  return null;
+};
+
 // --- REUSABLE LIVE PHONE PREVIEW COMPONENT ---
 
 const LivePhoneMockup: React.FC<{
@@ -205,12 +230,14 @@ const LivePhoneMockup: React.FC<{
   skeletonMode?: boolean;
   tilted3D?: boolean;
   onLinkClick?: (id: string) => void;
+  onShareLink?: (link: LinkItem) => void;
 }> = ({
   data,
   compact = false,
   skeletonMode = false,
   tilted3D = false,
   onLinkClick,
+  onShareLink,
 }) => {
   const lightBg = isColorLight(data.wallpaperColor);
   const autoTextColor = lightBg ? '#0F172A' : '#FFFFFF';
@@ -409,18 +436,67 @@ const LivePhoneMockup: React.FC<{
                       };
 
                 return (
-                  <a
+                  <div
                     key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => onLinkClick && onLinkClick(link.id)}
                     style={buttonStyles}
-                    className="group relative w-full min-h-[48px] px-5 py-3 rounded-full border text-xs font-medium text-center flex items-center justify-center transition-transform duration-150 hover:scale-[1.015] active:scale-[0.99]"
+                    className={`group relative w-full border overflow-hidden transition-transform duration-150 hover:scale-[1.015] active:scale-[0.99] ${
+                      getLinkPreviewUrl(link) ? 'rounded-2xl' : 'rounded-full'
+                    }`}
                   >
-                    <span className="px-4 leading-snug line-clamp-2">{link.title}</span>
-                    <MoreVertical className="w-3.5 h-3.5 opacity-60 absolute right-3.5 shrink-0" />
-                  </a>
+                    <div className="min-h-[48px] px-3.5 py-2.5 flex items-center">
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => onLinkClick?.(link.id)}
+                        className="min-w-0 flex-1 flex items-center gap-2.5"
+                      >
+                        {getLinkIconUrl(link) ? (
+                          <img
+                            src={getLinkIconUrl(link)!}
+                            alt=""
+                            className="w-8 h-8 rounded-lg object-cover bg-white/80 shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                            <Link2 className="w-4 h-4" />
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1 text-center px-1 leading-snug line-clamp-2 text-xs font-medium">
+                          {link.title}
+                        </span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onShareLink?.(link);
+                        }}
+                        className="w-8 h-8 ml-1 shrink-0 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-white/10 transition-colors cursor-pointer"
+                        title="Share link"
+                        aria-label={`Bagikan ${link.title}`}
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {getLinkPreviewUrl(link) && (
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => onLinkClick?.(link.id)}
+                        className="block"
+                      >
+                        <img
+                          src={getLinkPreviewUrl(link)!}
+                          alt={`Preview ${link.title}`}
+                          className="w-full h-32 object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </a>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -483,10 +559,11 @@ export default function BioLinkApp() {
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('content');
   const [dashboardView, setDashboardView] = useState<'overview' | 'editor'>('overview');
   const [dashboardSection, setDashboardSection] = useState<DashboardSection>('overview');
-  const [analyticsRange, setAnalyticsRange] = useState<'7' | '30' | '90'>('7');
+  const [linkChartType, setLinkChartType] = useState<'horizontal' | 'vertical' | 'donut'>('horizontal');
   const [draftMessage, setDraftMessage] = useState('');
   const [audienceEmail, setAudienceEmail] = useState('');
   const [audienceList, setAudienceList] = useState<string[]>([]);
+  const [audienceQuery, setAudienceQuery] = useState('');
   const [plannedPost, setPlannedPost] = useState('');
   const [plannedDate, setPlannedDate] = useState('');
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
@@ -549,9 +626,16 @@ export default function BioLinkApp() {
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
   const [modalTitle, setModalTitle] = useState('');
   const [modalUrl, setModalUrl] = useState('');
+  const [modalThumbnailUrl, setModalThumbnailUrl] = useState('');
+  const [modalIconUrl, setModalIconUrl] = useState('');
+  const [activeShareLink, setActiveShareLink] = useState<LinkItem | null>(null);
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [authProvider, setAuthProvider] = useState('email');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -572,6 +656,24 @@ export default function BioLinkApp() {
       setToast((prev) => (prev === msg ? null : prev));
     }, 2400);
   };
+
+  useEffect(() => {
+    if (!data.username) return;
+    try {
+      const stored = window.localStorage.getItem(`biolink-audience-${data.username}`);
+      setAudienceList(stored ? JSON.parse(stored) : []);
+    } catch {
+      setAudienceList([]);
+    }
+  }, [data.username]);
+
+  useEffect(() => {
+    if (!data.username) return;
+    window.localStorage.setItem(
+      `biolink-audience-${data.username}`,
+      JSON.stringify(audienceList)
+    );
+  }, [audienceList, data.username]);
 
   useEffect(() => {
     if (!PUBLIC_USERNAME) return;
@@ -608,6 +710,9 @@ export default function BioLinkApp() {
           button_variant: string | null;
           font_family: string | null;
           show_footer_badge: boolean | null;
+          seo_title: string | null;
+          seo_description: string | null;
+          no_index: boolean | null;
           socials: SocialChannels | null;
           links: LinkItem[] | null;
         };
@@ -627,6 +732,9 @@ export default function BioLinkApp() {
           buttonVariant: (publicProfileRow.button_variant as ButtonVariant) || 'solid',
           fontFamily: (publicProfileRow.font_family as FontChoice) || 'DM Sans',
           showFooterBadge: publicProfileRow.show_footer_badge ?? true,
+          seoTitle: publicProfileRow.seo_title || '',
+          seoDescription: publicProfileRow.seo_description || '',
+          noIndex: publicProfileRow.no_index ?? false,
           socials: publicProfileRow.socials || INITIAL_STATE.socials,
           links: Array.isArray(publicProfileRow.links) ? publicProfileRow.links : [],
         });
@@ -637,6 +745,33 @@ export default function BioLinkApp() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!PUBLIC_USERNAME || !publicProfile) return;
+
+    document.title =
+      publicProfile.seoTitle ||
+      `${publicProfile.displayName || publicProfile.username} - BioLink`;
+
+    let descriptionMeta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (!descriptionMeta) {
+      descriptionMeta = document.createElement('meta');
+      descriptionMeta.name = 'description';
+      document.head.appendChild(descriptionMeta);
+    }
+    descriptionMeta.content =
+      publicProfile.seoDescription ||
+      publicProfile.bio ||
+      `${publicProfile.displayName || publicProfile.username} - BioLink`;
+
+    let robotsMeta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!robotsMeta) {
+      robotsMeta = document.createElement('meta');
+      robotsMeta.name = 'robots';
+      document.head.appendChild(robotsMeta);
+    }
+    robotsMeta.content = publicProfile.noIndex ? 'noindex, nofollow' : 'index, follow';
+  }, [publicProfile]);
 
   // Load atau inisialisasi profil dari tabel Supabase `bio_profiles`
   const loadUserProfile = async (
@@ -675,6 +810,9 @@ export default function BioLinkApp() {
           buttonVariant: (profile.button_variant as ButtonVariant) || 'solid',
           fontFamily: (profile.font_family as FontChoice) || 'DM Sans',
           showFooterBadge: profile.show_footer_badge ?? true,
+          seoTitle: profile.seo_title || '',
+          seoDescription: profile.seo_description || '',
+          noIndex: profile.no_index ?? false,
           socials: profile.socials || INITIAL_STATE.socials,
           links: Array.isArray(profile.links) ? profile.links : [],
         });
@@ -707,6 +845,9 @@ export default function BioLinkApp() {
           button_variant: newProfile.buttonVariant,
           font_family: newProfile.fontFamily,
           show_footer_badge: newProfile.showFooterBadge,
+          seo_title: newProfile.seoTitle,
+          seo_description: newProfile.seoDescription,
+          no_index: newProfile.noIndex,
           socials: newProfile.socials,
           links: newProfile.links,
         });
@@ -735,6 +876,7 @@ export default function BioLinkApp() {
       if (!mounted) return;
       if (session?.user) {
         setUserId(session.user.id);
+        setAuthProvider(session.user.app_metadata?.provider || 'email');
         await loadUserProfile(session.user.id, session.user.email || '');
       }
       if (mounted) setAuthLoading(false);
@@ -743,6 +885,7 @@ export default function BioLinkApp() {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUserId(session.user.id);
+        setAuthProvider(session.user.app_metadata?.provider || 'email');
         await loadUserProfile(session.user.id, session.user.email || '');
         setAuthLoading(false);
       } else if (event === 'SIGNED_OUT') {
@@ -780,6 +923,9 @@ export default function BioLinkApp() {
           button_variant: data.buttonVariant,
           font_family: data.fontFamily,
           show_footer_badge: data.showFooterBadge,
+          seo_title: data.seoTitle,
+          seo_description: data.seoDescription,
+          no_index: data.noIndex,
           socials: data.socials,
           links: data.links,
           updated_at: new Date().toISOString(),
@@ -1052,6 +1198,75 @@ export default function BioLinkApp() {
     showToast('Berhasil keluar dari akun');
   };
 
+  const handleSaveSettings = async () => {
+    if (!data.username.trim()) {
+      showToast('Username tidak boleh kosong');
+      return;
+    }
+
+    const { data: usernameAvailable, error } = await supabase.rpc(
+      'check_username_available',
+      { p_username: data.username }
+    );
+
+    if (error) {
+      showToast(`Gagal memeriksa username: ${error.message}`);
+      return;
+    }
+
+    const { data: ownProfile } = await supabase
+      .from('bio_profiles')
+      .select('username')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (usernameAvailable === false && ownProfile?.username !== data.username) {
+      showToast('Username sudah digunakan');
+      return;
+    }
+
+    showToast('Pengaturan berhasil disimpan');
+  };
+
+  const handleChangePassword = async () => {
+    if (authProvider !== 'email') {
+      showToast('Ganti password hanya tersedia untuk akun email');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showToast('Password baru minimal 6 karakter');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('Konfirmasi password tidak cocok');
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      showToast(`Gagal mengganti password: ${error.message}`);
+      return;
+    }
+    setNewPassword('');
+    setConfirmPassword('');
+    showToast('Password berhasil diganti');
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Hapus profil dan keluar dari akun? Tindakan ini tidak dapat dibatalkan.'
+    );
+    if (!confirmed || !userId) return;
+
+    const { error } = await supabase.rpc('delete_account');
+    if (error) {
+      showToast(`Gagal menghapus profil: ${error.message}`);
+      return;
+    }
+    await supabase.auth.signOut();
+    showToast('Profil berhasil dihapus');
+  };
+
   // --- STEP 1: ONBOARDING ADD LINK ---
   const handleOnboardingAddLink = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1078,6 +1293,8 @@ export default function BioLinkApp() {
     setEditingLink(null);
     setModalTitle('');
     setModalUrl('');
+    setModalThumbnailUrl('');
+    setModalIconUrl('');
     setShowAddLinkModal(true);
   };
 
@@ -1085,6 +1302,8 @@ export default function BioLinkApp() {
     setEditingLink(link);
     setModalTitle(link.title);
     setModalUrl(link.url);
+    setModalThumbnailUrl(link.thumbnailUrl || '');
+    setModalIconUrl(link.iconUrl || '');
     setShowAddLinkModal(true);
   };
 
@@ -1100,7 +1319,15 @@ export default function BioLinkApp() {
       updateDataWithHistory((prev) => ({
         ...prev,
         links: prev.links.map((l) =>
-          l.id === editingLink.id ? { ...l, title: modalTitle.trim(), url: formatted } : l
+          l.id === editingLink.id
+            ? {
+                ...l,
+                title: modalTitle.trim(),
+                url: formatted,
+                thumbnailUrl: modalThumbnailUrl.trim() || undefined,
+                iconUrl: modalIconUrl.trim() || undefined,
+              }
+            : l
         ),
       }));
       showToast('Link diperbarui');
@@ -1114,6 +1341,8 @@ export default function BioLinkApp() {
             url: formatted,
             active: true,
             clicks: 0,
+            thumbnailUrl: modalThumbnailUrl.trim() || undefined,
+            iconUrl: modalIconUrl.trim() || undefined,
           },
           ...prev.links,
         ],
@@ -1154,20 +1383,90 @@ export default function BioLinkApp() {
     }
 
     return (
-      <main
-        style={{ backgroundColor: publicProfile.wallpaperColor }}
-        className="min-h-[100dvh] flex items-center justify-center px-4 py-8"
-      >
-        <LivePhoneMockup
-          data={publicProfile}
-          onLinkClick={(id) => {
-            void supabase.rpc('increment_profile_link_click', {
-              p_username: PUBLIC_USERNAME,
-              p_link_id: id,
-            });
-          }}
-        />
-      </main>
+      <>
+        <main
+          style={{ backgroundColor: publicProfile.wallpaperColor }}
+          className="min-h-[100dvh] flex items-center justify-center px-4 py-8"
+        >
+          <LivePhoneMockup
+            data={publicProfile}
+            onLinkClick={(id) => {
+              void supabase.rpc('increment_profile_link_click', {
+                p_username: PUBLIC_USERNAME,
+                p_link_id: id,
+              });
+            }}
+            onShareLink={setActiveShareLink}
+          />
+        </main>
+        {activeShareLink && (
+          <div
+            onClick={() => setActiveShareLink(null)}
+            className="fixed inset-0 z-50 bg-slate-950/55 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              className="bg-white rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-xl space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">Share link</h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveShareLink(null)}
+                  className="p-1.5 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="rounded-2xl bg-slate-900 text-white p-4 text-center">
+                {getLinkPreviewUrl(activeShareLink) ? (
+                  <img
+                    src={getLinkPreviewUrl(activeShareLink)!}
+                    alt=""
+                    className="w-full h-32 rounded-xl object-cover mb-3"
+                  />
+                ) : getLinkIconUrl(activeShareLink) ? (
+                  <img
+                    src={getLinkIconUrl(activeShareLink)!}
+                    alt=""
+                    className="w-14 h-14 rounded-2xl object-cover mx-auto mb-3 bg-white"
+                  />
+                ) : null}
+                <p className="font-bold text-sm line-clamp-2">{activeShareLink.title}</p>
+                <p className="text-[11px] text-slate-300 mt-1 truncate">{activeShareLink.url}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(activeShareLink.url);
+                    showToast('Link disalin');
+                  }}
+                  className="h-11 rounded-full border border-slate-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Copy className="w-4 h-4" /> Copy link
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (navigator.share) {
+                      await navigator.share({ title: activeShareLink.title, url: activeShareLink.url });
+                    } else {
+                      navigator.clipboard?.writeText(activeShareLink.url);
+                      showToast('Link disalin');
+                    }
+                  }}
+                  className="h-11 rounded-full bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" /> Bagikan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -1752,6 +2051,7 @@ export default function BioLinkApp() {
       { label: 'Messaging', icon: MessageCircle, section: 'messaging' as DashboardSection },
       { label: 'Audience', icon: Users, section: 'audience' as DashboardSection },
       { label: 'Insights', icon: BarChart3, section: 'insights' as DashboardSection },
+      { label: 'Discoverability', icon: Globe, section: 'discoverability' as DashboardSection },
     ];
 
     const toolItems = [
@@ -1767,23 +2067,61 @@ export default function BioLinkApp() {
 
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-[238px] flex-col border-r border-slate-200/80 bg-white lg:flex">
           <div className="flex h-[72px] items-center px-5">
-            <button
-              type="button"
-              onClick={() => setDashboardView('overview')}
-              className="flex min-w-0 items-center gap-2.5 rounded-xl text-left"
-            >
-              <div className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowProfileMenu((prev) => !prev)}
+                className="flex min-w-0 items-center gap-2.5 rounded-xl text-left"
+              >
                 <img
                   src={data.avatarUrl}
                   alt=""
-                  className="size-8 rounded-full object-cover"
+                  className="size-8 shrink-0 rounded-full object-cover"
                 />
-              </div>
-              <div className="min-w-0 flex-1">
-
-              </div>
-              <ChevronDown className="size-4 text-slate-400" />
-            </button>
+                <div className="min-w-0 w-[120px]">
+                  <p className="truncate text-xs font-bold text-slate-900">{data.displayName}</p>
+                  <p className="truncate text-[10px] text-slate-400">biolink.id/{data.username}</p>
+                </div>
+                <ChevronDown className="size-4 text-slate-400" />
+              </button>
+              {showProfileMenu && (
+                <div
+                  onMouseLeave={() => setShowProfileMenu(false)}
+                  className="absolute left-0 top-11 w-52 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg z-50"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setDashboardSection('settings');
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Settings className="size-3.5" /> Pengaturan Akun
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setDashboardView('editor');
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Edit3 className="size-3.5" /> Edit Halaman
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      handleLogout();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                  >
+                    <LogOut className="size-3.5" /> Keluar
+                  </button>
+                </div>
+              )}
+            </div>
             <Bell className="ml-auto size-4 text-slate-500" />
           </div>
 
@@ -1928,6 +2266,7 @@ export default function BioLinkApp() {
                         messaging: 'Messaging',
                         audience: 'Audience',
                         insights: 'Insights',
+                        discoverability: 'Discoverability',
                         'business-cards': 'Business cards',
                         'social-planner': 'Social planner',
                         'instagram-auto-reply': 'Instagram auto-reply',
@@ -1971,30 +2310,141 @@ export default function BioLinkApp() {
                 )}
 
                 {dashboardSection === 'settings' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none">
-                    <CardContent className="space-y-5 p-5">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold">Display name</label>
-                        <input value={data.displayName} onChange={(e) => setData((prev) => ({ ...prev, displayName: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold">Username</label>
-                        <div className="flex rounded-xl border border-slate-200">
-                          <span className="px-3 py-2.5 text-sm text-slate-400">linktree/</span>
-                          <input value={data.username} onChange={(e) => setData((prev) => ({ ...prev, username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none" />
+                  <div className="space-y-4">
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Tema</CardTitle></CardHeader>
+                      <CardContent className="px-5 pb-5">
+                        <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4">
+                          <div>
+                            <p className="text-sm font-semibold">Wallpaper, warna, dan gaya tombol</p>
+                            <p className="mt-1 text-xs text-slate-500">Atur tampilan publik halaman Biolink Anda.</p>
+                          </div>
+                          <Button type="button" variant="outline" className="shrink-0 rounded-full" onClick={() => { setDashboardView('editor'); setDashboardTab('design'); }}>
+                            <Palette className="size-4" /> Atur Tema
+                          </Button>
                         </div>
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-xs font-semibold">Account email</label>
-                        <input type="email" value={data.accountEmail} onChange={(e) => setData((prev) => ({ ...prev, accountEmail: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
-                      </div>
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-                        <span className="text-sm font-semibold text-slate-600">Cloud sync status</span>
-                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{syncStatus === 'saving' ? 'Saving...' : 'Saved'}</span>
-                      </div>
-                      <Button type="button" onClick={() => showToast('Pengaturan berhasil disimpan')} className="rounded-full bg-violet-600 hover:bg-violet-700">Save settings</Button>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Username</CardTitle></CardHeader>
+                      <CardContent className="space-y-3 px-5 pb-5">
+                        <div className="flex rounded-xl border border-slate-200">
+                          <span className="px-3 py-2.5 text-sm text-slate-400">biolink.id/</span>
+                          <input
+                            value={data.username}
+                            onChange={(e) => setData((prev) => ({
+                              ...prev,
+                              username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                            }))}
+                            className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none"
+                          />
+                        </div>
+                        <Button type="button" onClick={handleSaveSettings} className="rounded-full bg-violet-600 hover:bg-violet-700">
+                          Simpan Username
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {authProvider === 'email' && (
+                      <Card className="rounded-[18px] border-slate-200 shadow-none">
+                        <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Ganti Password</CardTitle></CardHeader>
+                        <CardContent className="grid gap-3 px-5 pb-5 md:grid-cols-2">
+                          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password baru" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Konfirmasi password" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />
+                          <div className="md:col-span-2">
+                            <Button type="button" variant="outline" onClick={handleChangePassword} className="rounded-full">
+                              Ganti Password
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    <Card className="rounded-[18px] border-rose-200 bg-rose-50/40 shadow-none">
+                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm text-rose-700">Zona Berbahaya</CardTitle></CardHeader>
+                      <CardContent className="flex items-center justify-between gap-4 px-5 pb-5">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Hapus akun</p>
+                          <p className="mt-1 text-xs text-slate-500">Menghapus profil dan semua data halaman Biolink.</p>
+                        </div>
+                        <Button type="button" variant="outline" onClick={handleDeleteAccount} className="shrink-0 rounded-full border-rose-200 text-rose-600 hover:bg-rose-50">
+                          <Trash2 className="size-4" /> Hapus Akun
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {dashboardSection === 'discoverability' && (
+                  <div className="space-y-4">
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-sm">Pengaturan SEO</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4 px-5 pb-5">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold">Judul halaman</label>
+                          <input
+                            value={data.seoTitle}
+                            onChange={(e) => setData((prev) => ({ ...prev, seoTitle: e.target.value }))}
+                            placeholder={data.displayName || data.username}
+                            maxLength={60}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                          />
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            {(data.seoTitle || data.displayName).length}/60 karakter
+                          </p>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold">Deskripsi halaman</label>
+                          <textarea
+                            value={data.seoDescription}
+                            onChange={(e) => setData((prev) => ({ ...prev, seoDescription: e.target.value }))}
+                            placeholder={data.bio || 'Deskripsi singkat halaman Biolink Anda'}
+                            maxLength={160}
+                            className="min-h-24 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                          />
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            {(data.seoDescription || data.bio).length}/160 karakter
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4">
+                          <div>
+                            <p className="text-sm font-semibold">Mencegah indeks mesin pencari</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Aktifkan <strong>noindex</strong> jika halaman belum ingin muncul di Google.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setData((prev) => ({ ...prev, noIndex: !prev.noIndex }))}
+                            className={`h-6 w-11 shrink-0 rounded-full p-0.5 ${data.noIndex ? 'bg-violet-600' : 'bg-slate-200'}`}
+                            aria-label="Aktifkan noindex"
+                          >
+                            <span className={`block size-5 rounded-full bg-white transition-transform ${data.noIndex ? 'translate-x-5' : ''}`} />
+                          </button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardHeader className="px-5 py-4"><CardTitle className="text-sm">Pratinjau hasil pencarian</CardTitle></CardHeader>
+                      <CardContent className="px-5 pb-5">
+                        <div className="rounded-xl border border-slate-200 p-4">
+                          <p className="text-[12px] text-emerald-700">
+                            {getPublicProfileUrl(data.username)}
+                          </p>
+                          <p className="mt-1 text-lg font-medium text-sky-700">
+                            {data.seoTitle || data.displayName || data.username}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-slate-600">
+                            {data.seoDescription || data.bio || 'Deskripsi halaman Biolink Anda.'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
 
                 {dashboardSection === 'messaging' && (
@@ -2002,13 +2452,291 @@ export default function BioLinkApp() {
                 )}
 
                 {dashboardSection === 'audience' && (
-                  <Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><form onSubmit={(e) => { e.preventDefault(); const email = audienceEmail.trim(); if (!email) return; setAudienceList((prev) => [...prev, email]); setAudienceEmail(''); showToast('Audience ditambahkan'); }} className="flex gap-2"><input type="email" value={audienceEmail} onChange={(e) => setAudienceEmail(e.target.value)} placeholder="Audience email" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><Button type="submit" className="rounded-full bg-violet-600 hover:bg-violet-700">Add</Button></form><div className="mt-4 space-y-2">{audienceList.length === 0 ? <p className="text-sm text-slate-500">Belum ada audience yang ditambahkan.</p> : audienceList.map((email, index) => <div key={`${email}-${index}`} className="flex items-center rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><Mail className="mr-2 size-4 text-slate-400" /><span className="flex-1">{email}</span><button type="button" onClick={() => setAudienceList((prev) => prev.filter((_, i) => i !== index))} className="text-slate-400 hover:text-rose-600"><Trash2 className="size-4" /></button></div>)}</div></CardContent></Card>
+                  <div className="space-y-4">
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardContent className="p-5">
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">Audience Manager</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                              Simpan email pengunjung yang memberikan izin, lalu gunakan daftar ini untuk
+                              update, promo, atau komunikasi pribadi.
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                            {audienceList.length} kontak
+                          </span>
+                        </div>
+
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const email = audienceEmail.trim().toLowerCase();
+                            if (!email) return;
+                            if (audienceList.some((item) => item.toLowerCase() === email)) {
+                              showToast('Email sudah ada di audience');
+                              return;
+                            }
+                            setAudienceList((prev) => [email, ...prev]);
+                            setAudienceEmail('');
+                            showToast('Audience ditambahkan');
+                          }}
+                          className="flex gap-2"
+                        >
+                          <input
+                            type="email"
+                            value={audienceEmail}
+                            onChange={(e) => setAudienceEmail(e.target.value)}
+                            placeholder="nama@email.com"
+                            className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                          />
+                          <Button type="submit" className="rounded-full bg-violet-600 hover:bg-violet-700">
+                            <Plus className="size-4" /> Tambah
+                          </Button>
+                        </form>
+
+                        <div className="mt-4 flex gap-2">
+                          <input
+                            type="search"
+                            value={audienceQuery}
+                            onChange={(e) => setAudienceQuery(e.target.value)}
+                            placeholder="Cari audience..."
+                            className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-full"
+                            disabled={audienceList.length === 0}
+                            onClick={() => {
+                              const csv = ['Email', ...audienceList].join('\n');
+                              const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+                              const anchor = document.createElement('a');
+                              anchor.href = url;
+                              anchor.download = `${data.username || 'biolink'}-audience.csv`;
+                              anchor.click();
+                              URL.revokeObjectURL(url);
+                              showToast('Daftar audience diekspor');
+                            }}
+                          >
+                            <Download className="size-4" /> Ekspor
+                          </Button>
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                          {audienceList
+                            .filter((email) => email.toLowerCase().includes(audienceQuery.trim().toLowerCase()))
+                            .map((email) => (
+                              <div
+                                key={email}
+                                className="flex items-center rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                              >
+                                <Mail className="mr-2 size-4 text-slate-400" />
+                                <span className="flex-1 truncate">{email}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setAudienceList((prev) => prev.filter((item) => item !== email))}
+                                  className="rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                                  title="Hapus audience"
+                                >
+                                  <Trash2 className="size-4" />
+                                </button>
+                              </div>
+                            ))}
+
+                          {audienceList.length === 0 && (
+                            <p className="rounded-xl border border-dashed border-slate-300 py-6 text-center text-sm text-slate-500">
+                              Belum ada kontak audience.
+                            </p>
+                          )}
+                          {audienceList.length > 0 &&
+                            audienceList.filter((email) =>
+                              email.toLowerCase().includes(audienceQuery.trim().toLowerCase())
+                            ).length === 0 && (
+                              <p className="py-4 text-center text-sm text-slate-500">
+                                Tidak ada audience yang cocok.
+                              </p>
+                            )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
 
                 {dashboardSection === 'insights' && (
                   <div className="space-y-4">
-                    <div className="flex gap-2">{(['7', '30', '90'] as const).map((range) => <Button key={range} type="button" variant={analyticsRange === range ? 'default' : 'outline'} onClick={() => setAnalyticsRange(range)} className={`rounded-full ${analyticsRange === range ? 'bg-violet-600 hover:bg-violet-700' : ''}`}>{range} days</Button>)}</div>
-                    <div className="grid gap-4 md:grid-cols-3"><Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs text-slate-500">Visitors</p><p className="mt-2 text-3xl font-bold">{totalClicks}</p></CardContent></Card><Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs text-slate-500">Active links</p><p className="mt-2 text-3xl font-bold">{activeLinks}</p></CardContent></Card><Card className="rounded-[18px] border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs text-slate-500">Range</p><p className="mt-2 text-3xl font-bold">{analyticsRange}</p></CardContent></Card></div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-slate-700">Performa seluruh link</p>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-500">
+                        Data klik kumulatif
+                      </span>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Card className="rounded-[18px] border-slate-200 shadow-none">
+                        <CardContent className="p-5">
+                          <p className="text-xs text-slate-500">Total klik link</p>
+                          <p className="mt-2 text-3xl font-bold">{totalClicks}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="rounded-[18px] border-slate-200 shadow-none">
+                        <CardContent className="p-5">
+                          <p className="text-xs text-slate-500">Link aktif</p>
+                          <p className="mt-2 text-3xl font-bold">{activeLinks}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="rounded-[18px] border-slate-200 shadow-none">
+                        <CardContent className="p-5">
+                          <p className="text-xs text-slate-500">Rata-rata per link aktif</p>
+                          <p className="mt-2 text-3xl font-bold">
+                            {activeLinks === 0 ? 0 : (totalClicks / activeLinks).toFixed(1)}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardHeader className="flex-row items-center justify-between gap-3 px-5 py-4">
+                        <CardTitle className="text-sm">Link paling sering diklik</CardTitle>
+                        <div className="flex rounded-full bg-slate-100 p-1">
+                          {([
+                            ['horizontal', 'Batang'],
+                            ['vertical', 'Kolom'],
+                            ['donut', 'Donut'],
+                          ] as const).map(([type, label]) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setLinkChartType(type)}
+                              className={`rounded-full px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
+                                linkChartType === type
+                                  ? 'bg-white text-violet-700 shadow-sm'
+                                  : 'text-slate-500 hover:text-slate-800'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="px-5 pb-5">
+                        {data.links.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-500">
+                            Belum ada link untuk dianalisis.
+                          </div>
+                        ) : (
+                          (() => {
+                            const sortedLinks = [...data.links].sort((a, b) => b.clicks - a.clicks);
+                            const maxClicks = Math.max(...sortedLinks.map((link) => link.clicks), 1);
+                            const chartColors = ['#8b5cf6', '#ec4899', '#0ea5e9', '#f59e0b', '#10b981', '#64748b'];
+
+                            if (linkChartType === 'vertical') {
+                              return (
+                                <div className="mt-2 overflow-x-auto">
+                                  <div className="flex h-64 min-w-[420px] items-end gap-3 border-b border-slate-200 px-2">
+                                    {sortedLinks.map((link, index) => (
+                                      <div key={link.id} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                                        <span className="text-[10px] font-bold text-slate-600">{link.clicks}</span>
+                                        <div
+                                          className="w-full max-w-14 rounded-t-lg transition-all"
+                                          style={{
+                                            height: `${Math.max((link.clicks / maxClicks) * 180, link.clicks > 0 ? 8 : 2)}px`,
+                                            backgroundColor: chartColors[index % chartColors.length],
+                                          }}
+                                          title={`${link.title}: ${link.clicks} klik`}
+                                        />
+                                        <p className="h-8 w-full overflow-hidden text-center text-[9px] leading-3 text-slate-500 line-clamp-2">
+                                          {link.title}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            if (linkChartType === 'donut') {
+                              const total = sortedLinks.reduce((sum, link) => sum + link.clicks, 0);
+                              let runningPercent = 0;
+                              const segments = sortedLinks.map((link, index) => {
+                                const percent = total === 0 ? 0 : (link.clicks / total) * 100;
+                                const segment = `${chartColors[index % chartColors.length]} ${runningPercent}% ${runningPercent + percent}%`;
+                                runningPercent += percent;
+                                return segment;
+                              });
+
+                              return (
+                                <div className="grid items-center gap-6 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                  <div
+                                    className="relative mx-auto size-44 rounded-full"
+                                    style={{
+                                      background: total === 0
+                                        ? '#f1f5f9'
+                                        : `conic-gradient(${segments.join(', ')})`,
+                                    }}
+                                  >
+                                    <div className="absolute inset-[28px] grid place-items-center rounded-full bg-white text-center">
+                                      <div>
+                                        <p className="text-2xl font-bold text-slate-900">{total}</p>
+                                        <p className="text-[10px] text-slate-500">total klik</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2.5">
+                                    {sortedLinks.map((link, index) => {
+                                      const percent = total === 0 ? 0 : Math.round((link.clicks / total) * 100);
+                                      return (
+                                        <div key={link.id} className="flex items-center gap-2 text-xs">
+                                          <span
+                                            className="size-2.5 shrink-0 rounded-full"
+                                            style={{ backgroundColor: chartColors[index % chartColors.length] }}
+                                          />
+                                          <span className="min-w-0 flex-1 truncate text-slate-700">{link.title}</span>
+                                          <span className="font-bold text-slate-800">{link.clicks}</span>
+                                          <span className="w-10 text-right text-slate-400">{percent}%</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-4">
+                                {sortedLinks.map((link, index) => {
+                                  const width = (link.clicks / maxClicks) * 100;
+                                  return (
+                                    <div key={link.id}>
+                                      <div className="mb-1.5 flex items-center gap-2">
+                                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500">
+                                          {index + 1}
+                                        </span>
+                                        <p className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800">
+                                          {link.title}
+                                        </p>
+                                        <span className="text-xs font-bold text-slate-600">
+                                          {link.clicks} klik
+                                        </span>
+                                      </div>
+                                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                                        <div
+                                          className="h-full rounded-full transition-all"
+                                          style={{
+                                            width: `${width}%`,
+                                            backgroundColor: chartColors[index % chartColors.length],
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()
+                        )}
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
 
@@ -2295,7 +3023,7 @@ export default function BioLinkApp() {
                   <CardHeader className="flex-row items-center justify-between px-5 py-4">
                     <CardTitle className="text-[13px]">Linktree visitors</CardTitle>
                     <span className="flex items-center gap-1 text-[11px] text-slate-500">
-                      {analyticsRange} days <ChevronRight className="size-3.5" />
+                      All time <ChevronRight className="size-3.5" />
                     </span>
                   </CardHeader>
                   <CardContent className="px-5">
@@ -2619,9 +3347,18 @@ export default function BioLinkApp() {
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
-                        <Link2 className="w-4 h-4" />
-                      </div>
+                      {getLinkIconUrl(link) ? (
+                        <img
+                          src={getLinkIconUrl(link)!}
+                          alt=""
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-white shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                          <Link2 className="w-4 h-4" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">
                           {link.title}
@@ -2653,6 +3390,16 @@ export default function BioLinkApp() {
                             link.active ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveShareLink(link)}
+                        className="p-2 rounded-full text-slate-500 hover:bg-sky-50 hover:text-sky-600 transition-colors cursor-pointer"
+                        title="Share link"
+                        aria-label={`Bagikan ${link.title}`}
+                      >
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
                       <button
@@ -3107,6 +3854,7 @@ export default function BioLinkApp() {
             <LivePhoneMockup
               data={data}
               onLinkClick={handleIncrementClick}
+              onShareLink={setActiveShareLink}
             />
 
             <div className="hidden sm:flex flex-col gap-2 bg-white border border-slate-200 p-1.5 rounded-full shadow-2xs">
@@ -3183,6 +3931,35 @@ export default function BioLinkApp() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  URL Gambar Preview
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://.../preview.jpg"
+                  value={modalThumbnailUrl}
+                  onChange={(e) => setModalThumbnailUrl(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    URL Icon Kiri
+                  </label>
+                  <span className="text-[10px] text-slate-400">Kosongkan untuk otomatis</span>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://.../icon.png"
+                  value={modalIconUrl}
+                  onChange={(e) => setModalIconUrl(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                />
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm py-3 rounded-full transition-colors cursor-pointer"
@@ -3190,6 +3967,76 @@ export default function BioLinkApp() {
                 {editingLink ? 'Simpan Perubahan' : 'Tambahkan Link'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {activeShareLink && (
+        <div
+          onClick={() => setActiveShareLink(null)}
+          className="fixed inset-0 z-[60] bg-slate-900/35 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="bg-white rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">Share link</h3>
+              <button
+                type="button"
+                onClick={() => setActiveShareLink(null)}
+                className="p-1.5 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-slate-900 text-white p-4 text-center">
+              {getLinkPreviewUrl(activeShareLink) ? (
+                <img
+                  src={getLinkPreviewUrl(activeShareLink)!}
+                  alt=""
+                  className="w-full h-32 rounded-xl object-cover mb-3"
+                  referrerPolicy="no-referrer"
+                />
+              ) : getLinkIconUrl(activeShareLink) ? (
+                <img
+                  src={getLinkIconUrl(activeShareLink)!}
+                  alt=""
+                  className="w-14 h-14 rounded-2xl object-cover mx-auto mb-3 bg-white"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
+              <p className="font-bold text-sm line-clamp-2">{activeShareLink.title}</p>
+              <p className="text-[11px] text-slate-300 mt-1 truncate">{activeShareLink.url}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(activeShareLink.url);
+                  showToast('Link disalin');
+                }}
+                className="h-11 rounded-full border border-slate-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Copy className="w-4 h-4" /> Copy link
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (navigator.share) {
+                    await navigator.share({ title: activeShareLink.title, url: activeShareLink.url });
+                  } else {
+                    navigator.clipboard?.writeText(activeShareLink.url);
+                    showToast('Link disalin');
+                  }
+                }}
+                className="h-11 rounded-full bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" /> Bagikan
+              </button>
+            </div>
           </div>
         </div>
       )}

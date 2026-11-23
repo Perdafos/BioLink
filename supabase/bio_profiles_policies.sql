@@ -4,8 +4,34 @@
 
 alter table public.bio_profiles enable row level security;
 
+alter table public.bio_profiles
+  add column if not exists seo_title text not null default '',
+  add column if not exists seo_description text not null default '',
+  add column if not exists no_index boolean not null default false;
+
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on table public.bio_profiles to authenticated;
+
+create or replace function public.delete_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  current_user_id uuid := auth.uid();
+begin
+  if current_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+
+  delete from public.bio_profiles where id = current_user_id;
+  delete from auth.users where id = current_user_id;
+end;
+$$;
+
+revoke all on function public.delete_account() from public;
+grant execute on function public.delete_account() to authenticated;
 
 drop policy if exists "Users can read their own bio profile" on public.bio_profiles;
 create policy "Users can read their own bio profile"
