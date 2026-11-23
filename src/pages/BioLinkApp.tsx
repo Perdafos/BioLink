@@ -30,7 +30,6 @@ import {
   MessageCircle,
   Music2,
   Loader2,
-  Bell,
   ChevronRight,
   BarChart3,
   Users,
@@ -1676,6 +1675,7 @@ export default function BioLinkApp() {
 
       if (!error) {
         setSyncStatus('saved');
+        showToast('Tersimpan di cloud');
         setProfiles((prev) =>
           prev.map((profile) =>
             profile.id === activeProfileId
@@ -1691,6 +1691,7 @@ export default function BioLinkApp() {
       } else {
         console.error('Gagal sync ke Supabase:', error.message);
         setSyncStatus('idle');
+        showToast('Gagal menyimpan perubahan');
       }
     }, 600);
 
@@ -4337,10 +4338,14 @@ export default function BioLinkApp() {
             <PanelLeft className="size-4" />
           </button>
           {syncStatus === 'saving' && (
-            <span className="hidden md:inline-block text-[11px] text-slate-400">Menyimpan...</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Loader2 className="size-3 animate-spin" />
+              Menyimpan...
+            </span>
           )}
           {syncStatus === 'saved' && (
-            <span className="hidden md:inline-block text-[11px] text-emerald-600">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600">
+              <Check className="size-3" />
               Tersimpan di cloud
             </span>
           )}
