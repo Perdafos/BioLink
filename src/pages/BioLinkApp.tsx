@@ -4464,17 +4464,7 @@ export default function BioLinkApp() {
                   </div>
 
                   <div>
-                    <div className="mb-2.5 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-700">Open Stickers</p>
-                      <a
-                        href="https://openstickers.craftwork.design/"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] font-semibold text-sky-600"
-                      >
-                        by Craftwork
-                      </a>
-                    </div>
+                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Open Stickers</p>
                     <div className="grid grid-cols-5 gap-2">
                       {OPEN_STICKERS.map((sticker) => (
                         <button
@@ -4555,33 +4545,6 @@ export default function BioLinkApp() {
                             <X className="size-3" />
                           </button>
                         </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {data.stickers.map((sticker, index) => (
-                        <label key={`scale-${sticker.src}-${index}`} className="rounded-xl border border-slate-200 px-3 py-2">
-                          <span className="mb-1.5 block text-[10px] font-semibold text-slate-500">
-                            Ukuran {index + 1}
-                          </span>
-                          <input
-                            type="range"
-                            min="0.6"
-                            max="2"
-                            step="0.1"
-                            value={sticker.scale}
-                            onChange={(e) =>
-                              updateDataWithHistory((prev) => ({
-                                ...prev,
-                                stickers: prev.stickers.map((item, itemIndex) =>
-                                  itemIndex === index
-                                    ? { ...item, scale: Number(e.target.value) }
-                                    : item
-                                ),
-                              }))
-                            }
-                            className="w-full accent-sky-500"
-                          />
-                        </label>
                       ))}
                     </div>
                     </div>
