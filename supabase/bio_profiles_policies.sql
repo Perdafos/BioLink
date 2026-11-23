@@ -10,7 +10,8 @@ alter table public.bio_profiles
   add column if not exists no_index boolean not null default false,
   add column if not exists banner_url text not null default '',
   add column if not exists profile_shape text not null default 'circle',
-  add column if not exists cutout_enabled boolean not null default false;
+  add column if not exists cutout_enabled boolean not null default false,
+  add column if not exists avatar_original_url text not null default '';
 
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on table public.bio_profiles to authenticated;

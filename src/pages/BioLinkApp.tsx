@@ -94,6 +94,7 @@ interface BioPageState {
   displayName: string;
   bio: string;
   avatarUrl: string;
+  avatarOriginalUrl: string;
   bannerColor: string;
   bannerUrl: string;
   headerLayout: HeaderLayoutType;
@@ -160,6 +161,8 @@ const INITIAL_STATE: BioPageState = {
   displayName: 'Dafa Ghaitsa (Perdafos)',
   bio: 'Full-Stack Web Developer & IoT Enthusiast. Membangun produk digital modern.',
   avatarUrl:
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+  avatarOriginalUrl:
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
   bannerColor: '#0EA5E9',
   bannerUrl: '',
@@ -817,6 +820,7 @@ export default function BioLinkApp() {
           display_name: string | null;
           bio: string | null;
           avatar_url: string | null;
+          avatar_original_url: string | null;
           banner_color: string | null;
           banner_url: string | null;
           header_layout: string | null;
@@ -842,6 +846,7 @@ export default function BioLinkApp() {
           displayName: publicProfileRow.display_name || publicProfileRow.username,
           bio: publicProfileRow.bio || '',
           avatarUrl: publicProfileRow.avatar_url || INITIAL_STATE.avatarUrl,
+          avatarOriginalUrl: publicProfileRow.avatar_original_url || publicProfileRow.avatar_url || INITIAL_STATE.avatarOriginalUrl,
           bannerColor: publicProfileRow.banner_color || '#0EA5E9',
           bannerUrl: publicProfileRow.banner_url || '',
           headerLayout: (publicProfileRow.header_layout as HeaderLayoutType) || 'classic',
@@ -923,6 +928,7 @@ export default function BioLinkApp() {
           displayName: profile.display_name || profile.username,
           bio: profile.bio || '',
           avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
+          avatarOriginalUrl: profile.avatar_original_url || profile.avatar_url || INITIAL_STATE.avatarOriginalUrl,
           bannerColor: profile.banner_color || '#0EA5E9',
           bannerUrl: profile.banner_url || '',
           headerLayout: (profile.header_layout as HeaderLayoutType) || 'classic',
@@ -961,6 +967,7 @@ export default function BioLinkApp() {
           display_name: newProfile.displayName,
           bio: newProfile.bio,
           avatar_url: newProfile.avatarUrl,
+          avatar_original_url: newProfile.avatarOriginalUrl,
           banner_color: newProfile.bannerColor,
           banner_url: newProfile.bannerUrl,
           header_layout: newProfile.headerLayout,
@@ -1042,6 +1049,7 @@ export default function BioLinkApp() {
           display_name: data.displayName,
           bio: data.bio,
           avatar_url: data.avatarUrl,
+          avatar_original_url: data.avatarOriginalUrl,
           banner_color: data.bannerColor,
           banner_url: data.bannerUrl,
           header_layout: data.headerLayout,
@@ -1211,7 +1219,12 @@ export default function BioLinkApp() {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        updateDataWithHistory((prev) => ({ ...prev, avatarUrl: reader.result as string }));
+        updateDataWithHistory((prev) => ({
+          ...prev,
+          avatarUrl: reader.result as string,
+          avatarOriginalUrl: reader.result as string,
+          cutoutEnabled: false,
+        }));
         showToast('Foto profil diperbarui');
       }
     };
@@ -1239,34 +1252,134 @@ export default function BioLinkApp() {
     reader.readAsDataURL(file);
   };
 
+  const cleanCutoutBlob = async (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const image = new Image();
+      image.onload = () => {
+        const maxSize = 900;
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) {
+          URL.revokeObjectURL(url);
+          reject(new Error('Canvas not supported'));
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+        const pixels = context.getImageData(0, 0, width, height);
+        const { data: rgba } = pixels;
+
+        for (let index = 0; index < rgba.length; index += 4) {
+          if (rgba[index + 3] < 32) {
+            rgba[index + 3] = 0;
+          } else if (rgba[index + 3] < 180) {
+            rgba[index + 3] = Math.round(rgba[index + 3] * 0.72);
+          }
+        }
+
+        // Keep only the largest foreground component; this removes isolated
+        // floating matte/colour artifacts while preserving the subject.
+        const visited = new Uint8Array(width * height);
+        let bestComponent: number[] = [];
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const start = y * width + x;
+            if (visited[start] || rgba[start * 4 + 3] < 96) continue;
+            const stack = [start];
+            const component: number[] = [];
+            visited[start] = 1;
+
+            while (stack.length) {
+              const pixel = stack.pop()!;
+              component.push(pixel);
+              const px = pixel % width;
+              const py = Math.floor(pixel / width);
+
+              if (px > 0) {
+                const neighbor = pixel - 1;
+                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
+                  visited[neighbor] = 1;
+                  stack.push(neighbor);
+                }
+              }
+              if (px + 1 < width) {
+                const neighbor = pixel + 1;
+                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
+                  visited[neighbor] = 1;
+                  stack.push(neighbor);
+                }
+              }
+              if (py > 0) {
+                const neighbor = pixel - width;
+                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
+                  visited[neighbor] = 1;
+                  stack.push(neighbor);
+                }
+              }
+              if (py + 1 < height) {
+                const neighbor = pixel + width;
+                if (!visited[neighbor] && rgba[neighbor * 4 + 3] >= 96) {
+                  visited[neighbor] = 1;
+                  stack.push(neighbor);
+                }
+              }
+            }
+
+            if (component.length > bestComponent.length) bestComponent = component;
+          }
+        }
+
+        const kept = new Uint8Array(width * height);
+        bestComponent.forEach((pixel) => {
+          kept[pixel] = 1;
+        });
+        for (let pixel = 0; pixel < kept.length; pixel++) {
+          if (!kept[pixel]) rgba[pixel * 4 + 3] = 0;
+        }
+
+        context.putImageData(pixels, 0, 0);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Unable to read cutout result'));
+      };
+      image.src = url;
+    });
+
   const handleAutomaticCutout = () => {
     if (!data.avatarUrl || cutoutProcessing) return;
+    const originalSource = data.avatarOriginalUrl || data.avatarUrl;
     setCutoutProcessing(true);
     showToast('Menghapus background, tunggu sebentar...');
 
     void (async () => {
       try {
         const { removeBackground } = await import('@imgly/background-removal');
-        const blob = await removeBackground(data.avatarUrl, {
+        const blob = await removeBackground(originalSource, {
           model: 'isnet',
           output: {
             format: 'image/png',
             quality: 1,
           },
         });
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result !== 'string') return;
+        const cleanedCutout = await cleanCutoutBlob(blob);
           updateDataWithHistory((prev) => ({
             ...prev,
-            avatarUrl: reader.result as string,
+            avatarOriginalUrl: originalSource,
+            avatarUrl: cleanedCutout,
             cutoutEnabled: true,
             headerLayout: 'cutout',
           }));
           showToast('Background profil berhasil dihapus');
-        };
-        reader.onerror = () => showToast('Gagal mengubah hasil cutout');
-        reader.readAsDataURL(blob);
       } catch (error) {
         console.error('Gagal menghapus background:', error);
         showToast('Gagal menghapus background. Coba unggah foto dengan kualitas lebih baik.');
@@ -3835,6 +3948,21 @@ export default function BioLinkApp() {
                       >
                         {cutoutProcessing ? 'Memproses...' : 'Hapus Background'}
                       </button>
+                      {(data.cutoutEnabled || data.avatarOriginalUrl !== data.avatarUrl) && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({
+                              ...prev,
+                              avatarUrl: prev.avatarOriginalUrl || prev.avatarUrl,
+                              cutoutEnabled: false,
+                            }))
+                          }
+                          className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+                        >
+                          Kembalikan Foto
+                        </button>
+                      )}
                     </div>
                   )}
                   <div>
