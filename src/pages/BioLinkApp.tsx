@@ -195,7 +195,7 @@ const isCustomBio = (bio: string) =>
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
   username: 'john-doe',
-  displayName: DEFAULT_TITLE,
+  displayName: '',
   bio: '',
   avatarUrl: DEFAULT_AVATAR_URL,
   bannerColor: '#0EA5E9',
@@ -1454,7 +1454,7 @@ export default function BioLinkApp() {
       ...INITIAL_STATE,
       accountEmail: data.accountEmail,
       username,
-      displayName: DEFAULT_TITLE,
+      displayName: '',
       bio: '',
       links: [],
     };
@@ -1571,7 +1571,7 @@ export default function BioLinkApp() {
           ...INITIAL_STATE,
           accountEmail: session.email,
           username: session.username,
-          displayName: DEFAULT_TITLE,
+          displayName: '',
         });
         setProfiles([{
           id: session.id,
@@ -1918,14 +1918,14 @@ export default function BioLinkApp() {
         setProfiles([{
           id: account.id,
           username: account.username,
-          display_name: DEFAULT_TITLE,
+          display_name: '',
           avatar_url: null,
         }]);
         setData({
           ...INITIAL_STATE,
           accountEmail: account.email,
           username: account.username,
-          displayName: DEFAULT_TITLE,
+          displayName: '',
         });
         setStep('dashboard');
         showToast('Akun lokal berhasil dibuat!');
@@ -1973,14 +1973,14 @@ export default function BioLinkApp() {
         setProfiles([{
           id: account.id,
           username: account.username,
-          display_name: DEFAULT_TITLE,
+          display_name: '',
           avatar_url: null,
         }]);
         setData({
           ...INITIAL_STATE,
           accountEmail: account.email,
           username: account.username,
-          displayName: DEFAULT_TITLE,
+          displayName: '',
         });
         setStep('dashboard');
         showToast('Berhasil masuk!');
@@ -2881,6 +2881,17 @@ export default function BioLinkApp() {
   if (dashboardView === 'overview') {
     const activeLinks = data.links.filter((link) => link.active).length;
     const totalClicks = data.links.reduce((total, link) => total + link.clicks, 0);
+    const setupSteps = [
+      Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
+      isCustomTitle(data.displayName),
+      Boolean(data.username.trim()),
+      isCustomBio(data.bio),
+      data.links.length > 0,
+      Object.values(data.socials).some(Boolean),
+    ];
+    const setupCompleted = setupSteps.filter(Boolean).length;
+    const setupPercent = Math.round((setupCompleted / setupSteps.length) * 100);
+    const setupRingCircumference = 2 * Math.PI * 18;
 
     const sidebarItems = [
       { label: 'My BioLink', icon: LayoutGrid, section: 'overview' as DashboardSection },
@@ -3005,18 +3016,7 @@ export default function BioLinkApp() {
             })}
           </nav>
 
-          {Math.round(
-            ([
-              Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
-              isCustomTitle(data.displayName),
-              Boolean(data.username),
-              isCustomBio(data.bio),
-              data.links.length > 0,
-              Object.values(data.socials).some(Boolean),
-            ].filter(Boolean).length /
-              6) *
-            100
-          ) < 100 && (
+          {setupPercent < 100 && (
               <div className="m-3 mb-4 rounded-xl border border-slate-200 p-4">
                 <div className="mb-3 flex items-center gap-3">
                   <div className="relative grid size-12 place-items-center">
@@ -3030,39 +3030,17 @@ export default function BioLinkApp() {
                         stroke="#8b5cf6"
                         strokeWidth="5"
                         strokeLinecap="round"
-                        strokeDasharray="56 113"
+                        strokeDasharray={`${(setupPercent / 100) * setupRingCircumference} ${setupRingCircumference}`}
                       />
                     </svg>
                     <span className="text-xs font-bold text-violet-600">
-                      {Math.round(
-                        ([
-                          Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
-                          isCustomTitle(data.displayName),
-                          Boolean(data.username),
-                          isCustomBio(data.bio),
-                          data.links.length > 0,
-                          Object.values(data.socials).some(Boolean),
-                        ].filter(Boolean).length /
-                          6) *
-                        100
-                      )}
-                      %
+                      {setupPercent}%
                     </span>
                   </div>
                   <div>
                     <p className="text-xs font-semibold">Your setup checklist</p>
                     <p className="mt-1 text-[11px] text-slate-500">
-                      {
-                        [
-                          Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
-                          isCustomTitle(data.displayName),
-                          Boolean(data.username),
-                          isCustomBio(data.bio),
-                          data.links.length > 0,
-                          Object.values(data.socials).some(Boolean),
-                        ].filter(Boolean).length
-                      }{' '}
-                      of 6 complete
+                      {setupCompleted} of 6 complete
                     </p>
                   </div>
                 </div>
