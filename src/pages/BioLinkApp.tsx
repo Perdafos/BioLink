@@ -185,12 +185,18 @@ const getPublicProfileUrl = (username: string) =>
 
 const DEFAULT_AVATAR_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23E2E8F0'/%3E%3Ccircle cx='100' cy='78' r='38' fill='%2394A3B8'/%3E%3Cpath d='M35 185c8-47 31-70 65-70s57 23 65 70' fill='%2394A3B8'/%3E%3C/svg%3E";
+const DEFAULT_TITLE = 'Title';
+const DEFAULT_BIO_PLACEHOLDER = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
+const isCustomTitle = (title: string) =>
+  Boolean(title.trim()) && title.trim().toLowerCase() !== DEFAULT_TITLE.toLowerCase();
+const isCustomBio = (bio: string) =>
+  Boolean(bio.trim()) && bio.trim().toLowerCase() !== DEFAULT_BIO_PLACEHOLDER.toLowerCase();
 
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
   username: 'john-doe',
-  displayName: 'John Doe',
-  bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+  displayName: DEFAULT_TITLE,
+  bio: '',
   avatarUrl: DEFAULT_AVATAR_URL,
   bannerColor: '#0EA5E9',
   bannerUrl: '',
@@ -269,9 +275,10 @@ const sanitizeLegacyProfileValue = (
     kind === 'bio' &&
     (legacyText.includes('full-stack web developer') ||
       legacyText.includes('iot enthusiast') ||
-      legacyText.includes('membangun produk digital modern'))
+      legacyText.includes('membangun produk digital modern') ||
+      legacyText === DEFAULT_BIO_PLACEHOLDER.toLowerCase())
   ) {
-    return 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.';
+    return '';
   }
 
   return value;
@@ -1447,7 +1454,7 @@ export default function BioLinkApp() {
       ...INITIAL_STATE,
       accountEmail: data.accountEmail,
       username,
-      displayName: 'Untitled BioLink',
+      displayName: DEFAULT_TITLE,
       bio: '',
       links: [],
     };
@@ -1564,12 +1571,12 @@ export default function BioLinkApp() {
           ...INITIAL_STATE,
           accountEmail: session.email,
           username: session.username,
-          displayName: session.displayName,
+          displayName: DEFAULT_TITLE,
         });
         setProfiles([{
           id: session.id,
           username: session.username,
-          display_name: session.displayName,
+          display_name: DEFAULT_TITLE,
           avatar_url: null,
         }]);
         setActiveProfileId(session.id);
@@ -1911,14 +1918,14 @@ export default function BioLinkApp() {
         setProfiles([{
           id: account.id,
           username: account.username,
-          display_name: account.displayName,
+          display_name: DEFAULT_TITLE,
           avatar_url: null,
         }]);
         setData({
           ...INITIAL_STATE,
           accountEmail: account.email,
           username: account.username,
-          displayName: account.displayName,
+          displayName: DEFAULT_TITLE,
         });
         setStep('dashboard');
         showToast('Akun lokal berhasil dibuat!');
@@ -1966,14 +1973,14 @@ export default function BioLinkApp() {
         setProfiles([{
           id: account.id,
           username: account.username,
-          display_name: account.displayName,
+          display_name: DEFAULT_TITLE,
           avatar_url: null,
         }]);
         setData({
           ...INITIAL_STATE,
           accountEmail: account.email,
           username: account.username,
-          displayName: account.displayName,
+          displayName: DEFAULT_TITLE,
         });
         setStep('dashboard');
         showToast('Berhasil masuk!');
@@ -2602,7 +2609,7 @@ export default function BioLinkApp() {
                     maxLength={30}
                     value={data.displayName}
                     onChange={(e) => setData({ ...data, displayName: e.target.value })}
-                    placeholder="Display name"
+                    placeholder={DEFAULT_TITLE}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                   />
                   <input
@@ -2610,7 +2617,7 @@ export default function BioLinkApp() {
                     maxLength={160}
                     value={data.bio}
                     onChange={(e) => setData({ ...data, bio: e.target.value })}
-                    placeholder="Bio singkat Anda"
+                    placeholder={DEFAULT_BIO_PLACEHOLDER}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                   />
                 </div>
@@ -3001,9 +3008,9 @@ export default function BioLinkApp() {
           {Math.round(
             ([
               Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
-              Boolean(data.displayName),
+              isCustomTitle(data.displayName),
               Boolean(data.username),
-              Boolean(data.bio),
+              isCustomBio(data.bio),
               data.links.length > 0,
               Object.values(data.socials).some(Boolean),
             ].filter(Boolean).length /
@@ -3030,9 +3037,9 @@ export default function BioLinkApp() {
                       {Math.round(
                         ([
                           Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
-                          Boolean(data.displayName),
+                          isCustomTitle(data.displayName),
                           Boolean(data.username),
-                          Boolean(data.bio),
+                          isCustomBio(data.bio),
                           data.links.length > 0,
                           Object.values(data.socials).some(Boolean),
                         ].filter(Boolean).length /
@@ -3048,9 +3055,9 @@ export default function BioLinkApp() {
                       {
                         [
                           Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
-                          Boolean(data.displayName),
+                          isCustomTitle(data.displayName),
                           Boolean(data.username),
-                          Boolean(data.bio),
+                          isCustomBio(data.bio),
                           data.links.length > 0,
                           Object.values(data.socials).some(Boolean),
                         ].filter(Boolean).length
@@ -3149,9 +3156,9 @@ export default function BioLinkApp() {
                     <CardContent className="space-y-3 p-5">
                       {[
                         ['Profile photo', Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL), 'header'],
-                        ['Display name', Boolean(data.displayName), 'header'],
+                        ['Display name', isCustomTitle(data.displayName), 'header'],
                         ['Username', Boolean(data.username), 'header'],
-                        ['Short bio', Boolean(data.bio), 'header'],
+                        ['Short bio', isCustomBio(data.bio), 'header'],
                         ['Add at least one link', data.links.length > 0, 'content'],
                         ['Add a social channel', Object.values(data.socials).some(Boolean), 'header'],
                       ].map(([label, complete, tab]) => (
@@ -4989,6 +4996,7 @@ export default function BioLinkApp() {
                     onChange={(e) =>
                       updateDataWithHistory((prev) => ({ ...prev, displayName: e.target.value }))
                     }
+                    placeholder={DEFAULT_TITLE}
                     className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-sky-500"
                   />
                   <div className="text-right text-[11px] text-slate-400 mt-1">
@@ -5007,7 +5015,7 @@ export default function BioLinkApp() {
                     onChange={(e) =>
                       updateDataWithHistory((prev) => ({ ...prev, bio: e.target.value }))
                     }
-                    placeholder="Add a short bio"
+                    placeholder={DEFAULT_BIO_PLACEHOLDER}
                     className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-sky-500 resize-none"
                   />
                   <div className="text-right text-[11px] text-slate-400 mt-1">
