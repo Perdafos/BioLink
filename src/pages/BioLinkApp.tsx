@@ -216,6 +216,28 @@ const INITIAL_STATE: BioPageState = {
   stickers: [],
 };
 
+const LOCAL_ACCOUNTS_KEY = 'biolink-local-accounts';
+const LOCAL_SESSION_KEY = 'biolink-local-session';
+const LOCAL_ADMIN_EMAIL = 'admin@perdafos.my.id';
+const LOCAL_ADMIN_PASSWORD = 'admin123';
+const LOCAL_ADMIN_ID = '11111111-1111-4111-8111-111111111111';
+
+interface LocalAccount {
+  id: string;
+  email: string;
+  passwordHash: string;
+  username: string;
+  displayName: string;
+}
+
+const hashPassword = async (password: string) => {
+  const bytes = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 const sanitizeLegacyProfileValue = (
   value: string,
   kind: 'displayName' | 'username' | 'bio',
@@ -1029,7 +1051,7 @@ const LivePhoneMockup: React.FC<{
             </div>
           </div>
 
-          {/* BOTTOM LINKTREE-STYLE PILL CTA */}
+          {/* BOTTOM BioLink-STYLE PILL CTA */}
           <div className="mt-8 px-5 text-center space-y-2.5">
             {data.showFooterBadge && (
               <div className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-200 px-4 py-2 rounded-full text-[11px] font-semibold shadow-sm">
@@ -1163,7 +1185,7 @@ export default function BioLinkApp() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [accountName, setAccountName] = useState('John Doe');
-  const [accountAvatar, setAccountAvatar] = useState(INITIAL_STATE.avatarUrl);
+  const [accountAvatar] = useState(INITIAL_STATE.avatarUrl);
   const [authProvider, setAuthProvider] = useState('email');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1330,155 +1352,6 @@ export default function BioLinkApp() {
     robotsMeta.content = publicProfile.noIndex ? 'noindex, nofollow' : 'index, follow';
   }, [publicProfile]);
 
-  // Load atau inisialisasi profil dari tabel Supabase `bio_profiles`
-  const loadUserProfile = async (
-    uid: string,
-    email: string,
-    fallbackUsername?: string,
-    isNewAccount = false,
-    accountDisplayName?: string,
-    accountImageUrl?: string,
-  ) => {
-    isHydratingRef.current = true;
-    try {
-      const { data: ownedProfiles, error: profilesError } = await supabase
-        .from('bio_profiles')
-        .select('id, username, display_name, avatar_url')
-        .eq('owner_id', uid)
-        .order('username', { ascending: true });
-
-      if (profilesError) {
-        console.error('Gagal memuat daftar profil:', profilesError.message);
-        setAuthError(`Gagal memuat profil: ${profilesError.message}`);
-        return;
-      }
-
-      const profileRows = (ownedProfiles || []) as ProfileSummary[];
-      setProfiles(profileRows);
-
-      const savedProfileId = window.localStorage.getItem('biolink-active-profile-id');
-      const preferredProfileId =
-        profileRows.find((profile) => profile.id === savedProfileId)?.id ||
-        profileRows[0]?.id ||
-        null;
-
-      const profile = preferredProfileId
-        ? await supabase
-            .from('bio_profiles')
-            .select('*')
-            .eq('id', preferredProfileId)
-            .maybeSingle()
-            .then(({ data: selectedProfile }) => selectedProfile)
-        : null;
-
-      if (profile) {
-        setActiveProfileId(profile.id);
-        window.localStorage.setItem('biolink-active-profile-id', profile.id);
-        const resolvedAccountName =
-          accountDisplayName?.trim() ||
-          getNameFromEmail(email);
-        setAccountName(
-          sanitizeLegacyProfileValue(resolvedAccountName, 'displayName'),
-        );
-        setAccountAvatar(accountImageUrl || profile.avatar_url || INITIAL_STATE.avatarUrl);
-        const loadedDisplayName = sanitizeLegacyProfileValue(
-          profile.display_name || profile.username,
-          'displayName',
-        );
-        const shouldUseAccountName =
-          profile.display_name === profile.username ||
-          ['Untitled Linktree', 'User Baru', 'John Doe'].includes(
-            profile.display_name || '',
-          );
-        setData({
-          accountEmail: email,
-          username: sanitizeLegacyProfileValue(profile.username, 'username'),
-          displayName: shouldUseAccountName ? resolvedAccountName : loadedDisplayName,
-          bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
-          avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
-          bannerColor: profile.banner_color || '#0EA5E9',
-          bannerUrl: profile.banner_url || '',
-          headerLayout: (profile.header_layout as HeaderLayoutType) || 'classic',
-          profileShape: (profile.profile_shape as ProfileShape) || 'circle',
-          titleColor: profile.title_color || '#0F172A',
-          wallpaperColor: profile.wallpaper_color || '#FFFFFF',
-          buttonColor: profile.button_color || '#0EA5E9',
-          buttonTextColor: profile.button_text_color || '#FFFFFF',
-          buttonVariant: (profile.button_variant as ButtonVariant) || 'solid',
-          fontFamily: (profile.font_family as FontChoice) || 'DM Sans',
-          showFooterBadge: profile.show_footer_badge ?? true,
-          seoTitle: profile.seo_title || '',
-          seoDescription: profile.seo_description || '',
-          noIndex: profile.no_index ?? false,
-          socials: { ...INITIAL_STATE.socials, ...(profile.socials || {}) },
-          links: Array.isArray(profile.links) ? profile.links : [],
-          stickers: normalizeStickers(profile.stickers),
-        });
-        setStep(isNewAccount ? 'step-links' : 'dashboard');
-      } else {
-        const cleanUsername = (fallbackUsername || email.split('@')[0] || 'user')
-          .toLowerCase()
-          .replace(/[^a-z0-9._]/g, '');
-
-        const newProfile: BioPageState = {
-          ...INITIAL_STATE,
-          accountEmail: email,
-          username: cleanUsername || `user${Date.now().toString().slice(-4)}`,
-          displayName:
-            accountDisplayName?.trim() || getNameFromEmail(email),
-          links: [],
-        };
-
-        const { error: insertError } = await supabase.from('bio_profiles').insert({
-          id: uid,
-          owner_id: uid,
-          username: newProfile.username,
-          display_name: newProfile.displayName,
-          bio: newProfile.bio,
-          avatar_url: newProfile.avatarUrl,
-          banner_color: newProfile.bannerColor,
-          banner_url: newProfile.bannerUrl,
-          header_layout: newProfile.headerLayout,
-          profile_shape: newProfile.profileShape,
-          title_color: newProfile.titleColor,
-          wallpaper_color: newProfile.wallpaperColor,
-          button_color: newProfile.buttonColor,
-          button_text_color: newProfile.buttonTextColor,
-          button_variant: newProfile.buttonVariant,
-          font_family: newProfile.fontFamily,
-          show_footer_badge: newProfile.showFooterBadge,
-          seo_title: newProfile.seoTitle,
-          seo_description: newProfile.seoDescription,
-          no_index: newProfile.noIndex,
-          socials: newProfile.socials,
-          links: newProfile.links,
-          stickers: newProfile.stickers,
-        });
-
-        if (insertError) {
-          console.error('Gagal membuat profil awal:', insertError.message);
-          setAuthError(`Gagal membuat profil: ${insertError.message}`);
-          return;
-        }
-
-        setActiveProfileId(uid);
-        window.localStorage.setItem('biolink-active-profile-id', uid);
-        setProfiles([{
-          id: uid,
-          username: newProfile.username,
-          display_name: newProfile.displayName,
-          avatar_url: newProfile.avatarUrl,
-        }]);
-        setData(newProfile);
-        setStep('step-links');
-      }
-    } finally {
-      setTimeout(() => {
-        isHydratingRef.current = false;
-      }, 150);
-    }
-  };
-
   const switchProfile = async (profileId: string, openEditor = false) => {
     if (!userId || profileId === activeProfileId) return;
 
@@ -1551,8 +1424,8 @@ export default function BioLinkApp() {
       .order('username', { ascending: true });
 
     if (error) {
-      console.error('Gagal memperbarui daftar Linktree:', error.message);
-      showToast(`Gagal memperbarui daftar Linktree: ${error.message}`);
+      console.error('Gagal memperbarui daftar BioLink:', error.message);
+      showToast(`Gagal memperbarui daftar BioLink: ${error.message}`);
       return;
     }
 
@@ -1567,12 +1440,12 @@ export default function BioLinkApp() {
 
     const profileId = crypto.randomUUID();
     const suffix = Date.now().toString().slice(-6);
-    const username = `linktree-${suffix}`;
+    const username = `BioLink-${suffix}`;
     const newProfile: BioPageState = {
       ...INITIAL_STATE,
       accountEmail: data.accountEmail,
       username,
-      displayName: 'Untitled Linktree',
+      displayName: 'Untitled BioLink',
       bio: '',
       links: [],
     };
@@ -1604,7 +1477,7 @@ export default function BioLinkApp() {
     });
 
     if (error) {
-      showToast(`Gagal membuat Linktree: ${error.message}`);
+      showToast(`Gagal membuat BioLink: ${error.message}`);
       return;
     }
 
@@ -1633,7 +1506,7 @@ export default function BioLinkApp() {
     }
 
     if (profiles.length <= 1) {
-      showToast('Minimal satu Linktree harus tetap tersedia');
+      showToast('Minimal satu BioLink harus tetap tersedia');
       return;
     }
 
@@ -1641,7 +1514,7 @@ export default function BioLinkApp() {
     const profileName =
       profileToDelete?.display_name?.trim() ||
       profileToDelete?.username ||
-      'Linktree ini';
+      'BioLink ini';
 
     if (!window.confirm(`Hapus "${profileName}"? Tindakan ini tidak dapat dibatalkan.`)) {
       return;
@@ -1654,7 +1527,7 @@ export default function BioLinkApp() {
       .eq('owner_id', userId);
 
     if (error) {
-      showToast(`Gagal menghapus Linktree: ${error.message}`);
+      showToast(`Gagal menghapus BioLink: ${error.message}`);
       return;
     }
 
@@ -1668,46 +1541,42 @@ export default function BioLinkApp() {
       window.localStorage.removeItem('biolink-active-profile-id');
     }
 
-    showToast('Linktree berhasil dihapus');
+    showToast('BioLink berhasil dihapus');
   };
 
   // Cek sesi login saat halaman dimuat
   useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      if (session?.user) {
-        setUserId(session.user.id);
-        setAuthProvider(session.user.app_metadata?.provider || 'email');
-        const metadata = session.user.user_metadata || {};
-        await loadUserProfile(
-          session.user.id,
-          session.user.email || '',
-          undefined,
-          false,
-          metadata.full_name || metadata.name || metadata.display_name,
-          metadata.avatar_url || metadata.picture,
-        );
+    const savedSession = window.localStorage.getItem(LOCAL_SESSION_KEY);
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession) as {
+          id: string;
+          email: string;
+          username: string;
+          displayName: string;
+        };
+        setUserId(session.id);
+        setAuthProvider('email');
+        setAccountName(session.displayName);
+        setData({
+          ...INITIAL_STATE,
+          accountEmail: session.email,
+          username: session.username,
+          displayName: session.displayName,
+        });
+        setProfiles([{
+          id: session.id,
+          username: session.username,
+          display_name: session.displayName,
+          avatar_url: null,
+        }]);
+        setActiveProfileId(session.id);
+        setStep('dashboard');
+      } catch {
+        window.localStorage.removeItem(LOCAL_SESSION_KEY);
       }
-      if (mounted) setAuthLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_OUT') {
-        setUserId(null);
-        setData(INITIAL_STATE);
-        setAccountName('John Doe');
-        setAccountAvatar(INITIAL_STATE.avatarUrl);
-        window.localStorage.removeItem('biolink-active-profile-id');
-        setStep('login');
-      }
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
+    }
+    setAuthLoading(false);
   }, []);
 
   // Auto-sync perubahan data ke Supabase (debounce 600ms)
@@ -1853,7 +1722,7 @@ export default function BioLinkApp() {
         const pngUrl = URL.createObjectURL(pngBlob);
         const anchor = document.createElement('a');
         anchor.href = pngUrl;
-        anchor.download = `${data.username || 'linktree'}-business-card-qr.png`;
+        anchor.download = `${data.username || 'BioLink'}-business-card-qr.png`;
         anchor.click();
         URL.revokeObjectURL(pngUrl);
         showToast('QR code berhasil diunduh');
@@ -1981,7 +1850,7 @@ export default function BioLinkApp() {
     reader.readAsDataURL(file);
   };
 
-  // --- STEP 0: LOGIN & REGISTER SUPABASE ---
+  // --- STEP 0: LOGIN & REGISTER LOKAL ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -1990,95 +1859,125 @@ export default function BioLinkApp() {
     try {
       if (authMode === 'register') {
         const cleanUser = loginUsername.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
+        const cleanEmail = loginEmail.trim().toLowerCase();
         if (!cleanUser) {
           setAuthError('Username wajib diisi (huruf kecil, angka, titik, atau underscore).');
-          setAuthSubmitting(false);
+          return;
+        }
+        if (!cleanEmail || loginPassword.length < 6) {
+          setAuthError('Email dan kata sandi minimal 6 karakter wajib diisi.');
           return;
         }
 
-        const { data: usernameAvailable, error: usernameCheckError } = await supabase.rpc(
-          'check_username_available',
-          { p_username: cleanUser }
+        const storedAccounts = JSON.parse(
+          window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
+        ) as LocalAccount[];
+        if (
+          cleanEmail === LOCAL_ADMIN_EMAIL ||
+          storedAccounts.some((account) =>
+            account.email === cleanEmail || account.username === cleanUser
+          )
+        ) {
+          setAuthError('Email atau username sudah digunakan.');
+          return;
+        }
+
+        const account: LocalAccount = {
+          id: crypto.randomUUID(),
+          email: cleanEmail,
+          passwordHash: await hashPassword(loginPassword),
+          username: cleanUser,
+          displayName: getNameFromEmail(cleanEmail),
+        };
+        window.localStorage.setItem(
+          LOCAL_ACCOUNTS_KEY,
+          JSON.stringify([...storedAccounts, account]),
         );
-
-        if (usernameCheckError) {
-          setAuthError(`Gagal memeriksa username: ${usernameCheckError.message}`);
-          setAuthSubmitting(false);
-          return;
-        }
-
-        if (!usernameAvailable) {
-          setAuthError(`Username "@${cleanUser}" sudah digunakan. Coba username lain.`);
-          setAuthSubmitting(false);
-          return;
-        }
-
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: loginEmail.trim(),
-          password: loginPassword,
-          options: {
-            emailRedirectTo: APP_URL,
-            data: {
-              full_name: getNameFromEmail(loginEmail.trim()),
-            },
-          },
+        window.localStorage.setItem(
+          LOCAL_SESSION_KEY,
+          JSON.stringify({
+            id: account.id,
+            email: account.email,
+            username: account.username,
+            displayName: account.displayName,
+          }),
+        );
+        setUserId(account.id);
+        setAuthProvider('email');
+        setAccountName(account.displayName);
+        setActiveProfileId(account.id);
+        setProfiles([{
+          id: account.id,
+          username: account.username,
+          display_name: account.displayName,
+          avatar_url: null,
+        }]);
+        setData({
+          ...INITIAL_STATE,
+          accountEmail: account.email,
+          username: account.username,
+          displayName: account.displayName,
         });
-
-        if (signUpError) {
-          setAuthError(signUpError.message);
-          setAuthSubmitting(false);
-          return;
-        }
-
-        if (signUpData.user && signUpData.session) {
-          setUserId(signUpData.user.id);
-          await loadUserProfile(
-            signUpData.user.id,
-            loginEmail.trim(),
-            cleanUser,
-            true,
-            getNameFromEmail(loginEmail.trim()),
-          );
-          showToast('Akun berhasil dibuat!');
-        } else {
-          setAuthError('Pendaftaran berhasil! Cek inbox email kamu untuk konfirmasi, lalu masuk.');
-          setAuthMode('login');
-        }
+        setStep('dashboard');
+        showToast('Akun lokal berhasil dibuat!');
       } else {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: loginEmail.trim(),
-          password: loginPassword,
-        });
+        const cleanEmail = loginEmail.trim().toLowerCase();
+        const storedAccounts = JSON.parse(
+          window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
+        ) as LocalAccount[];
 
-        if (signInError) {
-          setAuthError(
-            signInError.message === 'Invalid login credentials'
-              ? 'Email atau kata sandi salah.'
-              : signInError.message
-          );
-          setAuthSubmitting(false);
+        let account: LocalAccount | null = null;
+        if (cleanEmail === LOCAL_ADMIN_EMAIL && loginPassword === LOCAL_ADMIN_PASSWORD) {
+          account = {
+            id: LOCAL_ADMIN_ID,
+            email: LOCAL_ADMIN_EMAIL,
+            passwordHash: '',
+            username: 'admin',
+            displayName: 'Admin',
+          };
+        } else {
+          const passwordHash = await hashPassword(loginPassword);
+          account =
+            storedAccounts.find((item) =>
+              item.email === cleanEmail && item.passwordHash === passwordHash
+            ) || null;
+        }
+
+        if (!account) {
+          setAuthError('Email atau kata sandi salah.');
           return;
         }
 
-        if (signInData.user) {
-          setUserId(signInData.user.id);
-          const metadata = signInData.user.user_metadata || {};
-          await loadUserProfile(
-            signInData.user.id,
-            signInData.user.email || loginEmail.trim(),
-            undefined,
-            false,
-            metadata.full_name ||
-              metadata.name ||
-              metadata.display_name ||
-              getNameFromEmail(signInData.user.email || loginEmail.trim()),
-            metadata.avatar_url || metadata.picture,
-          );
-          showToast('Berhasil masuk!');
-        }
+        window.localStorage.setItem(
+          LOCAL_SESSION_KEY,
+          JSON.stringify({
+            id: account.id,
+            email: account.email,
+            username: account.username,
+            displayName: account.displayName,
+          }),
+        );
+        setUserId(account.id);
+        setAuthProvider('email');
+        setAccountName(account.displayName);
+        setActiveProfileId(account.id);
+        setProfiles([{
+          id: account.id,
+          username: account.username,
+          display_name: account.displayName,
+          avatar_url: null,
+        }]);
+        setData({
+          ...INITIAL_STATE,
+          accountEmail: account.email,
+          username: account.username,
+          displayName: account.displayName,
+        });
+        setStep('dashboard');
+        showToast('Berhasil masuk!');
       }
     } catch {
-      setAuthError('Terjadi kesalahan koneksi ke server.');
+      setAuthError('Terjadi kesalahan saat memproses akun.');
     } finally {
       setAuthSubmitting(false);
     }
@@ -2086,23 +1985,12 @@ export default function BioLinkApp() {
 
   const handleGoogleLogin = async () => {
     setAuthError(null);
-    setAuthSubmitting(true);
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: APP_URL,
-      },
-    });
-
-    if (error) {
-      setAuthError(`Gagal login dengan Google: ${error.message}`);
-      setAuthSubmitting(false);
-    }
+    setAuthError('Login Google dinonaktifkan karena autentikasi sekarang menggunakan akun lokal.');
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    window.localStorage.removeItem(LOCAL_SESSION_KEY);
+    window.localStorage.removeItem('biolink-active-profile-id');
     setUserId(null);
     setData(INITIAL_STATE);
     setHistory([]);
@@ -2154,11 +2042,19 @@ export default function BioLinkApp() {
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-      showToast(`Gagal mengganti password: ${error.message}`);
+    if (data.accountEmail === LOCAL_ADMIN_EMAIL) {
+      showToast('Password akun admin dummy tidak dapat diubah dari aplikasi.');
       return;
     }
+
+    const storedAccounts = JSON.parse(
+      window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
+    ) as LocalAccount[];
+    const passwordHash = await hashPassword(newPassword);
+    const updatedAccounts = storedAccounts.map((account) =>
+      account.id === userId ? { ...account, passwordHash } : account
+    );
+    window.localStorage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
     setNewPassword('');
     setConfirmPassword('');
     showToast('Password berhasil diganti');
@@ -2170,12 +2066,20 @@ export default function BioLinkApp() {
     );
     if (!confirmed || !userId) return;
 
-    const { error } = await supabase.rpc('delete_account');
-    if (error) {
-      showToast(`Gagal menghapus profil: ${error.message}`);
-      return;
+    if (userId !== LOCAL_ADMIN_ID) {
+      const storedAccounts = JSON.parse(
+        window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
+      ) as LocalAccount[];
+      window.localStorage.setItem(
+        LOCAL_ACCOUNTS_KEY,
+        JSON.stringify(storedAccounts.filter((account) => account.id !== userId)),
+      );
     }
-    await supabase.auth.signOut();
+    window.localStorage.removeItem(LOCAL_SESSION_KEY);
+    window.localStorage.removeItem('biolink-active-profile-id');
+    setUserId(null);
+    setData(INITIAL_STATE);
+    setStep('login');
     showToast('Profil berhasil dihapus');
   };
 
@@ -2970,7 +2874,7 @@ export default function BioLinkApp() {
     const totalClicks = data.links.reduce((total, link) => total + link.clicks, 0);
 
     const sidebarItems = [
-      { label: 'My Linktree', icon: LayoutGrid, section: 'overview' as DashboardSection },
+      { label: 'My BioLink', icon: LayoutGrid, section: 'overview' as DashboardSection },
       { label: 'Messaging', icon: MessageCircle, section: 'messaging' as DashboardSection },
       { label: 'Audience', icon: Users, section: 'audience' as DashboardSection },
       { label: 'Insights', icon: BarChart3, section: 'insights' as DashboardSection },
@@ -3019,7 +2923,7 @@ export default function BioLinkApp() {
                     onClick={() => void createProfile()}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50"
                   >
-                    <Plus className="size-3.5" /> Tambah Linktree
+                    <Plus className="size-3.5" /> Tambah BioLink
                   </button>
                   <button
                     type="button"
@@ -3847,7 +3751,7 @@ export default function BioLinkApp() {
                         </h2>
                         <div className="mt-5 grid grid-cols-3 gap-3 text-center">
                           {[
-                            ['QR', 'Let people scan the QR code for a shortcut to your Linktree'],
+                            ['QR', 'Let people scan the QR code for a shortcut to your BioLink'],
                             ['Share', 'They can share your card with a shortcut'],
                             ['Save', 'New contacts appear in your Audience Manager'],
                           ].map(([icon, text]) => (
@@ -3900,7 +3804,7 @@ export default function BioLinkApp() {
                             href={getPublicProfileUrl(data.username)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="Open public Linktree"
+                            title="Open public BioLink"
                             className="mt-auto rounded-lg bg-white p-2.5 shadow-sm"
                           >
                             <div
@@ -4023,7 +3927,7 @@ export default function BioLinkApp() {
                             Let visitors share their details back
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Collect a name and email from people who follow your Linktree.
+                            Collect a name and email from people who follow your BioLink.
                           </p>
                         </div>
                         <button
@@ -4201,19 +4105,19 @@ export default function BioLinkApp() {
                       onClick={() => setDashboardView('editor')}
                       className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white sm:flex"
                     >
-                      linktree/{data.username}
+                      BioLink/{data.username}
                       <Share2 className="size-3.5" />
                     </button>
                   </div>
                 </div>
 
                 <section>
-                  <h2 className="mb-4 text-[15px] font-bold">Your Linktree</h2>
+                  <h2 className="mb-4 text-[15px] font-bold">Your BioLink</h2>
                   <div className="flex flex-wrap items-center gap-4">
                     {profiles.map((profile) => {
                       const isActive = profile.id === activeProfileId;
                       const profileName =
-                        profile.display_name?.trim() || profile.username || 'Untitled Linktree';
+                        profile.display_name?.trim() || profile.username || 'Untitled BioLink';
 
                       return (
                         <Card
@@ -4247,7 +4151,7 @@ export default function BioLinkApp() {
                                 <p className="mt-0.5 text-[11px] text-white/75">
                                   {isActive
                                     ? `${activeLinks} ${activeLinks === 1 ? 'link' : 'links'}`
-                                    : 'Linktree'}
+                                    : 'BioLink'}
                                 </p>
                               </div>
                             </div>
@@ -4262,7 +4166,7 @@ export default function BioLinkApp() {
                                   onClick={() => void deleteProfile(profile.id)}
                                   className="grid size-7 place-items-center rounded-full bg-white/15 text-white hover:bg-rose-500 cursor-pointer"
                                   aria-label={`Hapus ${profileName}`}
-                                  title="Hapus Linktree"
+                                  title="Hapus BioLink"
                                 >
                                   <Trash2 className="size-3.5" />
                                 </button>
@@ -4288,8 +4192,8 @@ export default function BioLinkApp() {
                       type="button"
                       onClick={() => void createProfile()}
                       className="group grid h-[278px] w-[218px] place-items-center rounded-[17px] border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600 cursor-pointer"
-                      aria-label="Tambah Linktree"
-                      title="Tambah Linktree"
+                      aria-label="Tambah BioLink"
+                      title="Tambah BioLink"
                     >
                       <span className="grid size-12 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition-colors group-hover:border-violet-200 group-hover:text-violet-600">
                         <Plus className="size-6" strokeWidth={2} />
@@ -4311,7 +4215,7 @@ export default function BioLinkApp() {
                       className="min-h-[230px] cursor-pointer rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300"
                     >
                       <CardHeader className="flex-row items-center justify-between px-5 py-4">
-                        <CardTitle className="text-[13px]">Linktree visitors</CardTitle>
+                        <CardTitle className="text-[13px]">BioLink visitors</CardTitle>
                         <span className="flex items-center gap-1 text-[11px] text-slate-500">
                           All time <ChevronRight className="size-3.5" />
                         </span>
@@ -4448,7 +4352,7 @@ export default function BioLinkApp() {
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Tambah Linktree
+                Tambah BioLink
               </button>
               <button
                 type="button"
@@ -5049,7 +4953,7 @@ export default function BioLinkApp() {
                 <div className="sm:col-span-2">
                   <div className="flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-sky-500">
                     <span className="shrink-0 border-r border-slate-100 px-3 py-3 text-sm text-slate-400">
-                      linktree/
+                      BioLink/
                     </span>
                     <input
                       type="text"
