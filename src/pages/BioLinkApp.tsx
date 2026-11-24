@@ -3000,7 +3000,7 @@ export default function BioLinkApp() {
 
           {Math.round(
             ([
-              Boolean(data.avatarUrl),
+              Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
               Boolean(data.displayName),
               Boolean(data.username),
               Boolean(data.bio),
@@ -3029,7 +3029,7 @@ export default function BioLinkApp() {
                     <span className="text-xs font-bold text-violet-600">
                       {Math.round(
                         ([
-                          Boolean(data.avatarUrl),
+                          Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
                           Boolean(data.displayName),
                           Boolean(data.username),
                           Boolean(data.bio),
@@ -3047,7 +3047,7 @@ export default function BioLinkApp() {
                     <p className="mt-1 text-[11px] text-slate-500">
                       {
                         [
-                          Boolean(data.avatarUrl),
+                          Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
                           Boolean(data.displayName),
                           Boolean(data.username),
                           Boolean(data.bio),
@@ -3148,7 +3148,7 @@ export default function BioLinkApp() {
                   <Card className="rounded-[18px] border-slate-200 shadow-none">
                     <CardContent className="space-y-3 p-5">
                       {[
-                        ['Profile photo', Boolean(data.avatarUrl), 'header'],
+                        ['Profile photo', Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL), 'header'],
                         ['Display name', Boolean(data.displayName), 'header'],
                         ['Username', Boolean(data.username), 'header'],
                         ['Short bio', Boolean(data.bio), 'header'],
