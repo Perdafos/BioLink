@@ -183,13 +183,15 @@ const PUBLIC_USERNAME = PUBLIC_USERNAME_VALUE ? PUBLIC_USERNAME_VALUE.toLowerCas
 const getPublicProfileUrl = (username: string) =>
   `${APP_URL}/?profile=${encodeURIComponent(username.trim().toLowerCase())}`;
 
+const DEFAULT_AVATAR_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23E2E8F0'/%3E%3Ccircle cx='100' cy='78' r='38' fill='%2394A3B8'/%3E%3Cpath d='M35 185c8-47 31-70 65-70s57 23 65 70' fill='%2394A3B8'/%3E%3C/svg%3E";
+
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
   username: 'john-doe',
   displayName: 'John Doe',
   bio: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-  avatarUrl:
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+  avatarUrl: DEFAULT_AVATAR_URL,
   bannerColor: '#0EA5E9',
   bannerUrl: '',
   headerLayout: 'classic',
