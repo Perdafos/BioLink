@@ -90,6 +90,8 @@ interface LinkItem {
   url: string;
   active: boolean;
   clicks: number;
+  type?: 'link' | 'group';
+  groupId?: string;
   thumbnailUrl?: string;
   iconUrl?: string;
 }
@@ -561,6 +563,7 @@ const LivePhoneMockup: React.FC<{
 }) => {
     const [selectedStickerIndex, setSelectedStickerIndex] = useState<number | null>(null);
     const [expandedPreviewIds, setExpandedPreviewIds] = useState<Record<string, boolean>>({});
+    const [expandedGroupIds, setExpandedGroupIds] = useState<Record<string, boolean>>({});
 
     const toggleLinkPreview = (id: string) => {
       setExpandedPreviewIds((prev) => ({
@@ -584,7 +587,7 @@ const LivePhoneMockup: React.FC<{
           ? 'font-sans tracking-tight'
           : 'font-sans';
 
-    const activeLinks = data.links.filter((l) => l.active);
+    const activeLinks = data.links.filter((link) => link.active && !link.groupId);
 
     return (
       <div
@@ -927,9 +930,6 @@ const LivePhoneMockup: React.FC<{
                 </>
               ) : (
                 activeLinks.map((link) => {
-                  const hasPreview = Boolean(getLinkPreviewUrl(link));
-                  const isPreviewOpen = Boolean(expandedPreviewIds[link.id]);
-
                   const buttonStyles: React.CSSProperties =
                     data.buttonVariant === 'solid'
                       ? {
@@ -948,6 +948,81 @@ const LivePhoneMockup: React.FC<{
                           color: autoTextColor,
                           borderColor: 'transparent',
                         };
+
+                  if (link.type === 'group') {
+                    const groupLinks = data.links.filter(
+                      (child) =>
+                        child.groupId === link.id &&
+                        child.type !== 'group' &&
+                        child.active,
+                    );
+                    const isExpanded = Boolean(expandedGroupIds[link.id]);
+
+                    return (
+                      <div
+                        key={link.id}
+                        style={buttonStyles}
+                        className={`group relative w-full overflow-hidden border transition-[border-radius,transform] duration-300 ease-out hover:scale-[1.015] active:scale-[0.99] ${
+                          isExpanded ? 'rounded-2xl' : 'rounded-[24px]'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={isExpanded}
+                          onClick={() =>
+                            setExpandedGroupIds((prev) => ({
+                              ...prev,
+                              [link.id]: !prev[link.id],
+                            }))
+                          }
+                          className="flex min-h-[48px] w-full items-center gap-2.5 px-3.5 py-2.5 text-left"
+                        >
+                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/15">
+                            <FolderGit2 className="size-4" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-center text-xs font-medium">
+                            {link.title}
+                          </span>
+                          <span className="shrink-0 text-[10px] opacity-70">
+                            {groupLinks.length} tautan
+                          </span>
+                          <ChevronDown
+                            className={`size-4 shrink-0 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+                        {isExpanded && (
+                          <div className="space-y-2 border-t border-black/10 p-2.5">
+                            {groupLinks.map((child) => (
+                              <a
+                                key={child.id}
+                                href={child.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => onLinkClick?.(child.id)}
+                                className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-black/5 px-3 py-2 text-xs font-medium transition-colors hover:bg-black/10"
+                              >
+                                <Link2 className="size-3.5 shrink-0 opacity-70" />
+                                <span className="min-w-0 flex-1 truncate text-center">
+                                  {child.title}
+                                </span>
+                                <ExternalLink className="size-3 shrink-0 opacity-60" />
+                              </a>
+                            ))}
+                            {groupLinks.length === 0 && (
+                              <p className="px-2 py-3 text-center text-xs opacity-70">
+                                Belum ada tautan aktif di kelompok ini.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  const hasPreview = Boolean(getLinkPreviewUrl(link));
+                  const isPreviewOpen = Boolean(expandedPreviewIds[link.id]);
 
                   return (
                     <div
@@ -1197,6 +1272,8 @@ export default function BioLinkApp() {
   const [mobileDashMode, setMobileDashMode] = useState<'editor' | 'preview'>('editor');
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
+  const [modalItemType, setModalItemType] = useState<'link' | 'group'>('link');
+  const [modalGroupId, setModalGroupId] = useState('');
   const [modalTitle, setModalTitle] = useState('');
   const [modalUrl, setModalUrl] = useState('');
   const [modalThumbnailUrl, setModalThumbnailUrl] = useState('');
@@ -2556,6 +2633,19 @@ export default function BioLinkApp() {
   // --- DASHBOARD ADD / EDIT LINK ---
   const openCreateModal = () => {
     setEditingLink(null);
+    setModalItemType('link');
+    setModalGroupId('');
+    setModalTitle('');
+    setModalUrl('');
+    setModalThumbnailUrl('');
+    setModalIconUrl('');
+    setShowAddLinkModal(true);
+  };
+
+  const openCreateGroupModal = () => {
+    setEditingLink(null);
+    setModalItemType('group');
+    setModalGroupId('');
     setModalTitle('');
     setModalUrl('');
     setModalThumbnailUrl('');
@@ -2565,6 +2655,8 @@ export default function BioLinkApp() {
 
   const openEditModal = (link: LinkItem) => {
     setEditingLink(link);
+    setModalItemType(link.type === 'group' ? 'group' : 'link');
+    setModalGroupId(link.groupId || '');
     setModalTitle(link.title);
     setModalUrl(link.url);
     setModalThumbnailUrl(link.thumbnailUrl || '');
@@ -2574,7 +2666,39 @@ export default function BioLinkApp() {
 
   const handleSaveModalLink = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!modalTitle.trim() || !modalUrl.trim()) return;
+    if (!modalTitle.trim()) return;
+
+    if (modalItemType === 'group') {
+      if (editingLink) {
+        updateDataWithHistory((prev) => ({
+          ...prev,
+          links: prev.links.map((link) =>
+            link.id === editingLink.id
+              ? { ...link, title: modalTitle.trim(), url: '', type: 'group', groupId: undefined }
+              : link
+          ),
+        }));
+      } else {
+        updateDataWithHistory((prev) => ({
+          ...prev,
+          links: [
+            {
+              id: `group-${Date.now()}`,
+              title: modalTitle.trim(),
+              url: '',
+              active: true,
+              clicks: 0,
+              type: 'group',
+            },
+            ...prev.links,
+          ],
+        }));
+      }
+      setShowAddLinkModal(false);
+      return;
+    }
+
+    if (!modalUrl.trim()) return;
     const formatted =
       modalUrl.startsWith('http://') || modalUrl.startsWith('https://')
         ? modalUrl.trim()
@@ -2589,6 +2713,8 @@ export default function BioLinkApp() {
               ...l,
               title: modalTitle.trim(),
               url: formatted,
+              type: 'link',
+              groupId: modalGroupId || undefined,
               thumbnailUrl: modalThumbnailUrl.trim() || undefined,
               iconUrl: modalIconUrl.trim() || undefined,
             }
@@ -2606,6 +2732,8 @@ export default function BioLinkApp() {
             url: formatted,
             active: true,
             clicks: 0,
+            type: 'link',
+            groupId: modalGroupId || undefined,
             thumbnailUrl: modalThumbnailUrl.trim() || undefined,
             iconUrl: modalIconUrl.trim() || undefined,
           },
@@ -2617,12 +2745,28 @@ export default function BioLinkApp() {
     setShowAddLinkModal(false);
   };
 
+  const handleDeleteLinkItem = (item: LinkItem) => {
+    updateDataWithHistory((prev) => ({
+      ...prev,
+      links: prev.links
+        .filter((link) => link.id !== item.id)
+        .map((link) =>
+          item.type === 'group' && link.groupId === item.id
+            ? { ...link, groupId: undefined }
+            : link
+        ),
+    }));
+  };
+
   const handleIncrementClick = (id: string) => {
     setData((prev) => ({
       ...prev,
       links: prev.links.map((l) => (l.id === id ? { ...l, clicks: l.clicks + 1 } : l)),
     }));
   };
+
+  const actualLinks = data.links.filter((link) => link.type !== 'group');
+  const linkGroups = data.links.filter((link) => link.type === 'group');
 
   const audienceGrowthStart = new Date();
   audienceGrowthStart.setHours(0, 0, 0, 0);
@@ -3002,17 +3146,19 @@ export default function BioLinkApp() {
                   className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3"
                 >
                   <div className="min-w-0 pr-3">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{item.title}</p>
-                    <p className="text-xs text-slate-400 truncate">{item.url}</p>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 truncate">
+                      {item.type === 'group' && <FolderGit2 className="size-4 shrink-0 text-violet-600" />}
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {item.type === 'group'
+                        ? `${data.links.filter((child) => child.groupId === item.id).length} tautan`
+                        : item.url}
+                    </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setData((prev) => ({
-                        ...prev,
-                        links: prev.links.filter((l) => l.id !== item.id),
-                      }))
-                    }
+                    onClick={() => handleDeleteLinkItem(item)}
                     className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -3406,14 +3552,14 @@ export default function BioLinkApp() {
   // RENDER 6: DASHBOARD UTAMA
   // ============================================================================
   if (dashboardView === 'overview') {
-    const activeLinks = data.links.filter((link) => link.active).length;
-    const totalClicks = data.links.reduce((total, link) => total + link.clicks, 0);
+    const activeLinks = actualLinks.filter((link) => link.active).length;
+    const totalClicks = actualLinks.reduce((total, link) => total + link.clicks, 0);
     const setupSteps = [
       Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
       isCustomTitle(data.displayName),
       Boolean(data.username.trim()),
       isCustomBio(data.bio),
-      data.links.length > 0,
+      actualLinks.length > 0,
       Object.values(data.socials).some(Boolean),
     ];
     const setupCompleted = setupSteps.filter(Boolean).length;
@@ -3664,7 +3810,7 @@ export default function BioLinkApp() {
                         ['Display name', isCustomTitle(data.displayName), 'header'],
                         ['Username', Boolean(data.username), 'header'],
                         ['Short bio', isCustomBio(data.bio), 'header'],
-                        ['Add at least one link', data.links.length > 0, 'content'],
+                        ['Add at least one link', actualLinks.length > 0, 'content'],
                         ['Add a social channel', Object.values(data.socials).some(Boolean), 'header'],
                       ].map(([label, complete, tab]) => (
                         <button
@@ -4105,13 +4251,13 @@ export default function BioLinkApp() {
                         </div>
                       </CardHeader>
                       <CardContent className="px-5 pb-5">
-                        {data.links.length === 0 ? (
+                        {actualLinks.length === 0 ? (
                           <div className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-500">
                             Belum ada link untuk dianalisis.
                           </div>
                         ) : (
                           (() => {
-                            const sortedLinks = [...data.links].sort((a, b) => b.clicks - a.clicks);
+                            const sortedLinks = [...actualLinks].sort((a, b) => b.clicks - a.clicks);
                             const maxClicks = Math.max(
                               ...sortedLinks.map((link) => link.clicks),
                               1
@@ -5062,7 +5208,7 @@ export default function BioLinkApp() {
 
               <div className="border-b border-slate-200 flex items-center justify-between gap-4">
                 <span className="pb-2.5 border-b-2 border-sky-500 text-sm font-semibold text-slate-900">
-                  Links ({data.links.length})
+                  Links ({actualLinks.length}) · Groups ({linkGroups.length})
                 </span>
                 {data.links.length > 1 && (
                   <span className="pb-2 text-[11px] text-slate-400">
@@ -5071,7 +5217,7 @@ export default function BioLinkApp() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <button
                   type="button"
                   onClick={() => setStep('step-links')}
@@ -5086,7 +5232,15 @@ export default function BioLinkApp() {
                   className="py-3 px-4 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  Add
+                  Add Link
+                </button>
+                <button
+                  type="button"
+                  onClick={openCreateGroupModal}
+                  className="py-3 px-4 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <FolderGit2 className="w-4 h-4" />
+                  Add Group
                 </button>
               </div>
 
@@ -5142,7 +5296,11 @@ export default function BioLinkApp() {
                       >
                         <GripVertical className="w-4 h-4" />
                       </span>
-                      {renderLinkIcon(link) ? (
+                      {link.type === 'group' ? (
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600">
+                          <FolderGit2 className="size-4" />
+                        </div>
+                      ) : renderLinkIcon(link) ? (
                         <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
                           {renderLinkIcon(link, 'w-4 h-4')}
                         </div>
@@ -5163,7 +5321,11 @@ export default function BioLinkApp() {
                           {link.title}
                         </p>
                         <p className="text-xs text-slate-400 truncate mt-0.5">
-                          {link.clicks} clicks • {link.url.replace(/^https?:\/\//, '')}
+                          {link.type === 'group'
+                            ? `${data.links.filter((child) => child.groupId === link.id).length} tautan`
+                            : `${link.clicks} clicks • ${link.groupId
+                              ? `Kelompok: ${data.links.find((item) => item.id === link.groupId)?.title || '—'}`
+                              : link.url.replace(/^https?:\/\//, '')}`}
                         </p>
                       </div>
                     </div>
@@ -5179,7 +5341,7 @@ export default function BioLinkApp() {
                             ),
                           }))
                         }
-                        aria-label="Aktifkan/Nonaktifkan Link"
+                        aria-label={`Aktifkan/Nonaktifkan ${link.type === 'group' ? 'kelompok' : 'tautan'}`}
                         className={`w-10 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${link.active ? 'bg-sky-500' : 'bg-slate-200'
                           }`}
                       >
@@ -5189,15 +5351,17 @@ export default function BioLinkApp() {
                         />
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveShareLink(link)}
-                        className="p-2 rounded-full text-slate-500 hover:bg-sky-50 hover:text-sky-600 transition-colors cursor-pointer"
-                        title="Share link"
-                        aria-label={`Bagikan ${link.title}`}
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      {link.type !== 'group' && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveShareLink(link)}
+                          className="p-2 rounded-full text-slate-500 hover:bg-sky-50 hover:text-sky-600 transition-colors cursor-pointer"
+                          title="Share link"
+                          aria-label={`Bagikan ${link.title}`}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -5210,14 +5374,9 @@ export default function BioLinkApp() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            links: prev.links.filter((l) => l.id !== link.id),
-                          }))
-                        }
+                        onClick={() => handleDeleteLinkItem(link)}
                         className="p-2 rounded-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Hapus"
+                        title={link.type === 'group' ? 'Hapus kelompok' : 'Hapus tautan'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -6227,7 +6386,13 @@ export default function BioLinkApp() {
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">
-                {editingLink ? 'Edit Link' : 'Tambah Link Baru'}
+                {modalItemType === 'group'
+                  ? editingLink
+                    ? 'Edit Kelompok'
+                    : 'Tambah Kelompok'
+                  : editingLink
+                    ? 'Edit Link'
+                    : 'Tambah Link Baru'}
               </h3>
               <button
                 type="button"
@@ -6241,69 +6406,104 @@ export default function BioLinkApp() {
             <form onSubmit={handleSaveModalLink} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Judul Tombol Link
+                  {modalItemType === 'group' ? 'Nama Kelompok' : 'Judul Tombol Link'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Portfolio Website"
+                  placeholder={
+                    modalItemType === 'group'
+                      ? 'Contoh: Sosial Media'
+                      : 'Contoh: Portfolio Website'
+                  }
                   value={modalTitle}
                   onChange={(e) => setModalTitle(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  URL Tujuan
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="https://example.com"
-                  value={modalUrl}
-                  onChange={(e) => setModalUrl(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  URL Gambar Preview <span className="font-normal text-slate-400">(opsional)</span>
-                </label>
-                <input
-                  type="url"
-                  placeholder="Kosongkan untuk screenshot halaman otomatis"
-                  value={modalThumbnailUrl}
-                  onChange={(e) => setModalThumbnailUrl(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
+              {modalItemType === 'link' && (
+                <>
                   <label className="block text-xs font-semibold text-slate-700">
-                    URL Icon Kiri
+                    Masukkan ke Kelompok
+                    <select
+                      value={modalGroupId}
+                      onChange={(event) => setModalGroupId(event.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-normal text-slate-900 focus:border-sky-500 focus:bg-white focus:outline-none"
+                    >
+                      <option value="">Tanpa kelompok</option>
+                      {data.links
+                        .filter((item) => item.type === 'group')
+                        .map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.title}
+                          </option>
+                        ))}
+                    </select>
                   </label>
-                  <span className="text-[10px] text-slate-400">Kosongkan untuk otomatis</span>
-                </div>
-                <input
-                  type="url"
-                  placeholder="https://.../icon.png"
-                  value={modalIconUrl}
-                  onChange={(e) => setModalIconUrl(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
-                />
-              </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      URL Tujuan
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="https://example.com"
+                      value={modalUrl}
+                      onChange={(e) => setModalUrl(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      URL Gambar Preview <span className="font-normal text-slate-400">(opsional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="Kosongkan untuk screenshot halaman otomatis"
+                      value={modalThumbnailUrl}
+                      onChange={(e) => setModalThumbnailUrl(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        URL Icon Kiri
+                      </label>
+                      <span className="text-[10px] text-slate-400">Kosongkan untuk otomatis</span>
+                    </div>
+                    <input
+                      type="url"
+                      placeholder="https://.../icon.png"
+                      value={modalIconUrl}
+                      onChange={(e) => setModalIconUrl(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                    />
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"
-                className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm py-3 rounded-full transition-colors cursor-pointer"
+                className={`w-full rounded-full py-3 text-sm font-semibold text-white transition-colors cursor-pointer ${
+                  modalItemType === 'group'
+                    ? 'bg-violet-600 hover:bg-violet-700'
+                    : 'bg-sky-500 hover:bg-sky-600'
+                }`}
               >
-                {editingLink ? 'Simpan Perubahan' : 'Tambahkan Link'}
+                {editingLink
+                  ? 'Simpan Perubahan'
+                  : modalItemType === 'group'
+                    ? 'Tambahkan Kelompok'
+                    : 'Tambahkan Link'}
               </button>
 
-              <div className="space-y-2.5">
+              {modalItemType === 'link' && (
+                <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-slate-700">
                     Icon Kiri Link
@@ -6366,7 +6566,8 @@ export default function BioLinkApp() {
                     className="min-w-0 flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                   />
                 </div>
-              </div>
+                </div>
+              )}
             </form>
           </div>
         </div>
