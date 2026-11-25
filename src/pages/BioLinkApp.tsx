@@ -1194,7 +1194,7 @@ export default function BioLinkApp() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [accountName, setAccountName] = useState('John Doe');
-  const [accountAvatar] = useState(INITIAL_STATE.avatarUrl);
+  const [accountAvatar, setAccountAvatar] = useState(INITIAL_STATE.avatarUrl);
   const [authProvider, setAuthProvider] = useState('email');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1360,6 +1360,155 @@ export default function BioLinkApp() {
     }
     robotsMeta.content = publicProfile.noIndex ? 'noindex, nofollow' : 'index, follow';
   }, [publicProfile]);
+
+  const loadUserProfile = async (
+    uid: string,
+    email: string,
+    fallbackUsername?: string,
+    isNewAccount = false,
+    accountDisplayName?: string,
+    accountImageUrl?: string,
+  ) => {
+    isHydratingRef.current = true;
+    try {
+      const { data: ownedProfiles, error: profilesError } = await supabase
+        .from('bio_profiles')
+        .select('id, username, display_name, avatar_url')
+        .eq('owner_id', uid)
+        .order('username', { ascending: true });
+
+      if (profilesError) {
+        console.error('Gagal memuat daftar profil:', profilesError.message);
+        setAuthError(`Gagal memuat profil: ${profilesError.message}`);
+        return;
+      }
+
+      const profileRows = (ownedProfiles || []) as ProfileSummary[];
+      setProfiles(profileRows);
+
+      const savedProfileId = window.localStorage.getItem('biolink-active-profile-id');
+      const preferredProfileId =
+        profileRows.find((profile) => profile.id === savedProfileId)?.id ||
+        profileRows[0]?.id ||
+        null;
+
+      const profile = preferredProfileId
+        ? await supabase
+            .from('bio_profiles')
+            .select('*')
+            .eq('id', preferredProfileId)
+            .maybeSingle()
+            .then(({ data: selectedProfile }) => selectedProfile)
+        : null;
+
+      if (profile) {
+        setActiveProfileId(profile.id);
+        window.localStorage.setItem('biolink-active-profile-id', profile.id);
+        const resolvedAccountName = accountDisplayName?.trim() || getNameFromEmail(email);
+        setAccountName(sanitizeLegacyProfileValue(resolvedAccountName, 'displayName'));
+        setAccountAvatar(accountImageUrl || profile.avatar_url || INITIAL_STATE.avatarUrl);
+        const loadedDisplayName = sanitizeLegacyProfileValue(
+          profile.display_name || profile.username,
+          'displayName',
+        );
+        const shouldUseAccountName =
+          profile.display_name === profile.username ||
+          ['Untitled Linktree', 'User Baru', 'John Doe'].includes(
+            profile.display_name || '',
+          );
+        setData({
+          accountEmail: email,
+          username: sanitizeLegacyProfileValue(profile.username, 'username'),
+          displayName: shouldUseAccountName ? resolvedAccountName : loadedDisplayName,
+          bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
+          avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
+          bannerColor: profile.banner_color || '#0EA5E9',
+          bannerUrl: profile.banner_url || '',
+          headerLayout: (profile.header_layout as HeaderLayoutType) || 'classic',
+          profileShape: (profile.profile_shape as ProfileShape) || 'circle',
+          titleColor: profile.title_color || '#0F172A',
+          wallpaperColor: profile.wallpaper_color || '#FFFFFF',
+          buttonColor: profile.button_color || '#0EA5E9',
+          buttonTextColor: profile.button_text_color || '#FFFFFF',
+          buttonVariant: (profile.button_variant as ButtonVariant) || 'solid',
+          fontFamily: (profile.font_family as FontChoice) || 'DM Sans',
+          showFooterBadge: profile.show_footer_badge ?? true,
+          seoTitle: profile.seo_title || '',
+          seoDescription: profile.seo_description || '',
+          noIndex: profile.no_index ?? false,
+          socials: { ...INITIAL_STATE.socials, ...(profile.socials || {}) },
+          links: Array.isArray(profile.links) ? profile.links : [],
+          stickers: normalizeStickers(profile.stickers),
+        });
+        setStep(isNewAccount ? 'step-links' : 'dashboard');
+      } else {
+        const cleanUsername = (fallbackUsername || email.split('@')[0] || 'user')
+          .toLowerCase()
+          .replace(/[^a-z0-9._]/g, '');
+        const newProfile: BioPageState = {
+          ...INITIAL_STATE,
+          accountEmail: email,
+          username: cleanUsername || `user${Date.now().toString().slice(-4)}`,
+          displayName: accountDisplayName?.trim() || getNameFromEmail(email),
+          links: [],
+        };
+
+        const { error: insertError } = await supabase.from('bio_profiles').insert({
+          id: uid,
+          owner_id: uid,
+          username: newProfile.username,
+          display_name: newProfile.displayName,
+          bio: newProfile.bio,
+          avatar_url: newProfile.avatarUrl,
+          banner_color: newProfile.bannerColor,
+          banner_url: newProfile.bannerUrl,
+          header_layout: newProfile.headerLayout,
+          profile_shape: newProfile.profileShape,
+          title_color: newProfile.titleColor,
+          wallpaper_color: newProfile.wallpaperColor,
+          button_color: newProfile.buttonColor,
+          button_text_color: newProfile.buttonTextColor,
+          button_variant: newProfile.buttonVariant,
+          font_family: newProfile.fontFamily,
+          show_footer_badge: newProfile.showFooterBadge,
+          seo_title: newProfile.seoTitle,
+          seo_description: newProfile.seoDescription,
+          no_index: newProfile.noIndex,
+          socials: newProfile.socials,
+          links: newProfile.links,
+          stickers: newProfile.stickers,
+        });
+
+        if (insertError) {
+          console.error('Gagal membuat profil awal:', insertError.message);
+          setAuthError(`Gagal membuat profil: ${insertError.message}`);
+          return;
+        }
+
+        setAccountName(
+          sanitizeLegacyProfileValue(
+            accountDisplayName?.trim() || getNameFromEmail(email),
+            'displayName',
+          ),
+        );
+        setAccountAvatar(accountImageUrl || INITIAL_STATE.avatarUrl);
+        setActiveProfileId(uid);
+        window.localStorage.setItem('biolink-active-profile-id', uid);
+        setProfiles([{
+          id: uid,
+          username: newProfile.username,
+          display_name: newProfile.displayName,
+          avatar_url: newProfile.avatarUrl,
+        }]);
+        setData(newProfile);
+        setStep('step-links');
+      }
+    } finally {
+      setTimeout(() => {
+        isHydratingRef.current = false;
+      }, 150);
+    }
+  };
 
   const switchProfile = async (profileId: string, openEditor = false) => {
     if (!userId || profileId === activeProfileId) return;
@@ -1553,10 +1702,13 @@ export default function BioLinkApp() {
     showToast('BioLink berhasil dihapus');
   };
 
-  // Cek sesi login saat halaman dimuat
+  // Restore Supabase sessions for OAuth users and local sessions for email accounts.
   useEffect(() => {
-    const savedSession = window.localStorage.getItem(LOCAL_SESSION_KEY);
-    if (savedSession) {
+    let mounted = true;
+    const restoreLocalSession = () => {
+      const savedSession = window.localStorage.getItem(LOCAL_SESSION_KEY);
+      if (!savedSession) return false;
+
       try {
         const session = JSON.parse(savedSession) as {
           id: string;
@@ -1576,16 +1728,78 @@ export default function BioLinkApp() {
         setProfiles([{
           id: session.id,
           username: session.username,
-          display_name: DEFAULT_TITLE,
+          display_name: '',
           avatar_url: null,
         }]);
         setActiveProfileId(session.id);
         setStep('dashboard');
+        return true;
       } catch {
         window.localStorage.removeItem(LOCAL_SESSION_KEY);
+        return false;
       }
-    }
-    setAuthLoading(false);
+
+    };
+
+    const restoreSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (error) {
+          const restoredLocalSession = restoreLocalSession();
+          if (!restoredLocalSession) {
+            setAuthError(`Gagal memeriksa sesi: ${error.message}`);
+          }
+          return;
+        }
+
+        if (session?.user) {
+          setUserId(session.user.id);
+          setAuthProvider(session.user.app_metadata?.provider || 'email');
+          const metadata = session.user.user_metadata || {};
+          await loadUserProfile(
+            session.user.id,
+            session.user.email || '',
+            undefined,
+            false,
+            metadata.full_name || metadata.name || metadata.display_name,
+            metadata.avatar_url || metadata.picture,
+          );
+        } else {
+          restoreLocalSession();
+        }
+      } catch (error) {
+        if (!mounted) return;
+        const restoredLocalSession = restoreLocalSession();
+        if (!restoredLocalSession) {
+          const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+          setAuthError(`Gagal memeriksa sesi: ${message}`);
+        }
+      } finally {
+        if (mounted) setAuthLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && mounted) {
+        setUserId(null);
+        setAuthProvider('email');
+        setData(INITIAL_STATE);
+        setAccountName('John Doe');
+        setAccountAvatar(INITIAL_STATE.avatarUrl);
+        setActiveProfileId(null);
+        setProfiles([]);
+        window.localStorage.removeItem('biolink-active-profile-id');
+        setStep('login');
+      }
+    });
+
+    void restoreSession();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Auto-sync perubahan data ke Supabase (debounce 600ms)
@@ -1994,13 +2208,41 @@ export default function BioLinkApp() {
 
   const handleGoogleLogin = async () => {
     setAuthError(null);
-    setAuthError('Login Google dinonaktifkan karena autentikasi sekarang menggunakan akun lokal.');
+    setAuthSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: APP_URL,
+        },
+      });
+
+      if (error) {
+        setAuthError(`Gagal login dengan Google: ${error.message}`);
+        setAuthSubmitting(false);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      setAuthError(`Gagal login dengan Google: ${message}`);
+      setAuthSubmitting(false);
+    }
   };
 
   const handleLogout = async () => {
+    if (authProvider !== 'email') {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        showToast(`Gagal keluar dari akun: ${error.message}`);
+        return;
+      }
+    }
     window.localStorage.removeItem(LOCAL_SESSION_KEY);
     window.localStorage.removeItem('biolink-active-profile-id');
     setUserId(null);
+    setAuthProvider('email');
+    setActiveProfileId(null);
+    setProfiles([]);
     setData(INITIAL_STATE);
     setHistory([]);
     setRedoStack([]);
