@@ -142,6 +142,12 @@ interface ProfileSummary {
   avatar_url: string | null;
 }
 
+interface AudienceContact {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
 // --- SOLID COLOR PALETTES (ZERO GRADIENTS) ---
 
 const WALLPAPER_SWATCHES = [
@@ -1114,8 +1120,15 @@ export default function BioLinkApp() {
   const [linkChartType, setLinkChartType] = useState<'horizontal' | 'vertical' | 'donut'>('horizontal');
   const [draftMessage, setDraftMessage] = useState('');
   const [audienceEmail, setAudienceEmail] = useState('');
-  const [audienceList, setAudienceList] = useState<string[]>([]);
+  const [audienceList, setAudienceList] = useState<AudienceContact[]>([]);
   const [audienceQuery, setAudienceQuery] = useState('');
+  const [audienceLoading, setAudienceLoading] = useState(false);
+  const [audienceLoadedFor, setAudienceLoadedFor] = useState('');
+  const [audienceFeedback, setAudienceFeedback] = useState('');
+  const [subscriberEmail, setSubscriberEmail] = useState('');
+  const [subscriberConsent, setSubscriberConsent] = useState(false);
+  const [subscriberSubmitting, setSubscriberSubmitting] = useState(false);
+  const [subscriberFeedback, setSubscriberFeedback] = useState('');
   const [plannedPost, setPlannedPost] = useState('');
   const [plannedDate, setPlannedDate] = useState('');
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
@@ -1239,19 +1252,204 @@ export default function BioLinkApp() {
   const showToast = (_msg: string) => {};
 
   useEffect(() => {
-    if (!data.username) return;
-    try {
-      const stored = window.localStorage.getItem(`biolink-audience-${data.username}`);
-      setAudienceList(stored ? JSON.parse(stored) : []);
-    } catch {
+    setAudienceLoading(false);
+    if (!data.username) {
       setAudienceList([]);
+      setAudienceLoadedFor('');
+      return;
     }
-  }, [data.username]);
+
+    let active = true;
+    setAudienceList([]);
+    setAudienceLoadedFor('');
+    setAudienceFeedback('');
+
+    if (authProvider === 'email') {
+      try {
+        const stored = window.localStorage.getItem(`biolink-audience-${data.username}`);
+        const parsed: unknown = stored ? JSON.parse(stored) : [];
+        const contacts = Array.isArray(parsed)
+          ? parsed.flatMap((item, index): AudienceContact[] => {
+              if (typeof item === 'string' && item.includes('@')) {
+                return [{
+                  id: `legacy-${index}-${item}`,
+                  email: item.toLowerCase(),
+                  created_at: new Date().toISOString(),
+                }];
+              }
+              if (
+                item &&
+                typeof item === 'object' &&
+                'id' in item &&
+                'email' in item &&
+                'created_at' in item &&
+                typeof item.id === 'string' &&
+                typeof item.email === 'string' &&
+                typeof item.created_at === 'string'
+              ) {
+                return [{
+                  id: item.id,
+                  email: item.email,
+                  created_at: item.created_at,
+                }];
+              }
+              return [];
+            })
+          : [];
+        setAudienceList(contacts);
+      } catch {
+        setAudienceList([]);
+        setAudienceFeedback('Gagal membaca daftar audience lokal.');
+      } finally {
+        setAudienceLoadedFor(data.username);
+      }
+      return () => {
+        active = false;
+      };
+    }
+
+    if (!userId || !activeProfileId) {
+      setAudienceLoadedFor(data.username);
+      return () => {
+        active = false;
+      };
+    }
+
+    setAudienceLoading(true);
+    void (async () => {
+      try {
+        const { data: contacts, error } = await supabase
+          .from('bio_audience_contacts')
+          .select('id, email, created_at')
+          .eq('profile_id', activeProfileId)
+          .order('created_at', { ascending: false });
+        if (!active) return;
+        if (error) {
+          setAudienceFeedback(`Gagal memuat audience: ${error.message}`);
+          setAudienceList([]);
+        } else {
+          setAudienceList((contacts || []) as AudienceContact[]);
+        }
+        setAudienceLoadedFor(data.username);
+        setAudienceLoading(false);
+      } catch (error) {
+        if (!active) return;
+        const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+        setAudienceFeedback(`Gagal memuat audience: ${message}`);
+        setAudienceList([]);
+        setAudienceLoadedFor(data.username);
+        setAudienceLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [activeProfileId, authProvider, data.username, userId]);
 
   useEffect(() => {
-    if (!data.username) return;
-    window.localStorage.setItem(`biolink-audience-${data.username}`, JSON.stringify(audienceList));
-  }, [audienceList, data.username]);
+    if (
+      authProvider !== 'email' ||
+      !data.username ||
+      audienceLoadedFor !== data.username
+    ) {
+      return;
+    }
+    window.localStorage.setItem(
+      `biolink-audience-${data.username}`,
+      JSON.stringify(audienceList),
+    );
+  }, [audienceList, audienceLoadedFor, authProvider, data.username]);
+
+  const handleAddAudienceContact = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const email = audienceEmail.trim().toLowerCase();
+    if (!email) return;
+    if (audienceList.some((contact) => contact.email === email)) {
+      setAudienceFeedback('Email sudah ada di audience.');
+      return;
+    }
+
+    if (authProvider === 'email') {
+      setAudienceList((contacts) => [
+        { id: crypto.randomUUID(), email, created_at: new Date().toISOString() },
+        ...contacts,
+      ]);
+      setAudienceFeedback('Kontak ditambahkan.');
+      setAudienceEmail('');
+      return;
+    }
+
+    if (!userId || !activeProfileId) {
+      setAudienceFeedback('Profil belum siap untuk menyimpan kontak.');
+      return;
+    }
+
+    const { data: contact, error } = await supabase
+      .from('bio_audience_contacts')
+      .insert({ profile_id: activeProfileId, owner_id: userId, email })
+      .select('id, email, created_at')
+      .single();
+
+    if (error) {
+      setAudienceFeedback(`Gagal menambahkan kontak: ${error.message}`);
+      return;
+    }
+
+    setAudienceList((contacts) => [contact as AudienceContact, ...contacts]);
+    setAudienceFeedback('Kontak ditambahkan.');
+    setAudienceEmail('');
+  };
+
+  const handleRemoveAudienceContact = async (contact: AudienceContact) => {
+    if (authProvider !== 'email') {
+      const { error } = await supabase
+        .from('bio_audience_contacts')
+        .delete()
+        .eq('id', contact.id)
+        .eq('profile_id', activeProfileId);
+      if (error) {
+        setAudienceFeedback(`Gagal menghapus kontak: ${error.message}`);
+        return;
+      }
+    }
+
+    setAudienceList((contacts) => contacts.filter((item) => item.id !== contact.id));
+    setAudienceFeedback('Kontak dihapus.');
+  };
+
+  const handleAudienceSubscription = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!subscriberConsent || !PUBLIC_USERNAME) return;
+
+    setSubscriberSubmitting(true);
+    setSubscriberFeedback('');
+    try {
+      const { data: result, error } = await supabase.rpc('subscribe_to_biolink_audience', {
+        p_username: PUBLIC_USERNAME,
+        p_email: subscriberEmail.trim().toLowerCase(),
+      });
+
+      if (error) {
+        setSubscriberFeedback(`Pendaftaran gagal: ${error.message}`);
+      } else if (result === 'subscribed') {
+        setSubscriberFeedback('Terima kasih! Email Anda berhasil didaftarkan.');
+        setSubscriberEmail('');
+        setSubscriberConsent(false);
+      } else if (result === 'already_subscribed') {
+        setSubscriberFeedback('Email ini sudah terdaftar.');
+      } else if (result === 'profile_not_found') {
+        setSubscriberFeedback('Halaman ini tidak ditemukan.');
+      } else {
+        setSubscriberFeedback('Masukkan alamat email yang valid.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      setSubscriberFeedback(`Pendaftaran gagal: ${message}`);
+    } finally {
+      setSubscriberSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!PUBLIC_USERNAME) return;
@@ -2426,6 +2624,50 @@ export default function BioLinkApp() {
     }));
   };
 
+  const audienceGrowthStart = new Date();
+  audienceGrowthStart.setHours(0, 0, 0, 0);
+  audienceGrowthStart.setDate(audienceGrowthStart.getDate() - 6);
+  const audienceGrowthBuckets = Array.from({ length: 7 }, () => 0);
+  let audienceGrowthBaseline = 0;
+  audienceList.forEach((contact) => {
+    const createdAt = new Date(contact.created_at);
+    if (Number.isNaN(createdAt.getTime())) return;
+    createdAt.setHours(0, 0, 0, 0);
+    const dayIndex = Math.floor(
+      (createdAt.getTime() - audienceGrowthStart.getTime()) / 86_400_000,
+    );
+    if (dayIndex < 0) {
+      audienceGrowthBaseline += 1;
+    } else if (dayIndex < audienceGrowthBuckets.length) {
+      audienceGrowthBuckets[dayIndex] += 1;
+    }
+  });
+  let audienceGrowthTotal = audienceGrowthBaseline;
+  const audienceGrowthTotals = audienceGrowthBuckets.map((dailyGrowth) => {
+    audienceGrowthTotal += dailyGrowth;
+    return audienceGrowthTotal;
+  });
+  const audienceGrowthMax = Math.max(...audienceGrowthTotals, 1);
+  const audienceGrowthSeries = audienceGrowthTotals.map((total, index) => {
+    const x = 8 + (index * 264) / 6;
+    const y = 108 - (total / audienceGrowthMax) * 84;
+    const date = new Date(audienceGrowthStart);
+    date.setDate(audienceGrowthStart.getDate() + index);
+    return {
+      x,
+      y,
+      total,
+      label: new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(date),
+    };
+  });
+  const audienceGrowthPoints = audienceGrowthSeries
+    .map(({ x, y }) => `${x},${y}`)
+    .join(' ');
+  const audienceGrowthThisWeek = audienceGrowthBuckets.reduce(
+    (total, count) => total + count,
+    0,
+  );
+
   // ============================================================================
   // RENDER 0A: PUBLIC BIO PAGE (/username)
   // ============================================================================
@@ -2455,7 +2697,7 @@ export default function BioLinkApp() {
       <>
         <main
           style={{ backgroundColor: publicProfile.wallpaperColor }}
-          className="min-h-[100dvh] flex items-center justify-center px-4 py-8"
+          className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-8"
         >
           <LivePhoneMockup
             data={publicProfile}
@@ -2467,6 +2709,49 @@ export default function BioLinkApp() {
             }}
             onShareLink={setActiveShareLink}
           />
+          <section className="mt-6 w-full max-w-[390px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-bold text-slate-900">Dapatkan update</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Daftar untuk menerima kabar terbaru dari {publicProfile.displayName || publicProfile.username}.
+            </p>
+            <form onSubmit={handleAudienceSubscription} className="mt-4 space-y-3">
+              <input
+                type="email"
+                required
+                maxLength={320}
+                value={subscriberEmail}
+                onChange={(event) => setSubscriberEmail(event.target.value)}
+                placeholder="nama@email.com"
+                autoComplete="email"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-100"
+              />
+              <label className="flex items-start gap-2 text-[11px] leading-4 text-slate-600">
+                <input
+                  type="checkbox"
+                  required
+                  checked={subscriberConsent}
+                  onChange={(event) => setSubscriberConsent(event.target.checked)}
+                  className="mt-0.5 accent-violet-600"
+                />
+                <span>
+                  Saya setuju email ini disimpan dan digunakan oleh pemilik halaman untuk mengirim
+                  update.
+                </span>
+              </label>
+              <button
+                type="submit"
+                disabled={subscriberSubmitting || !subscriberConsent}
+                className="w-full rounded-full bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {subscriberSubmitting ? 'Mendaftarkan...' : 'Daftar update'}
+              </button>
+            </form>
+            {subscriberFeedback && (
+              <p role="status" aria-live="polite" className="mt-3 text-xs text-slate-600">
+                {subscriberFeedback}
+              </p>
+            )}
+          </section>
         </main>
         {activeShareLink && (
           <div
@@ -3653,23 +3938,11 @@ export default function BioLinkApp() {
                           </span>
                         </div>
 
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const email = audienceEmail.trim().toLowerCase();
-                            if (!email) return;
-                            if (audienceList.some((item) => item.toLowerCase() === email)) {
-                              showToast('Email sudah ada di audience');
-                              return;
-                            }
-                            setAudienceList((prev) => [email, ...prev]);
-                            setAudienceEmail('');
-                            showToast('Audience ditambahkan');
-                          }}
-                          className="flex gap-2"
-                        >
+                        <form onSubmit={handleAddAudienceContact} className="flex gap-2">
                           <input
                             type="email"
+                            required
+                            maxLength={320}
                             value={audienceEmail}
                             onChange={(e) => setAudienceEmail(e.target.value)}
                             placeholder="nama@email.com"
@@ -3682,6 +3955,14 @@ export default function BioLinkApp() {
                             <Plus className="size-4" /> Tambah
                           </Button>
                         </form>
+                        <p className="mt-2 text-[11px] text-slate-500">
+                          Tambahkan kontak yang sudah memberi izin untuk menerima update.
+                        </p>
+                        {audienceFeedback && (
+                          <p role="status" className="mt-2 text-xs text-slate-600">
+                            {audienceFeedback}
+                          </p>
+                        )}
 
                         <div className="mt-4 flex gap-2">
                           <input
@@ -3697,7 +3978,12 @@ export default function BioLinkApp() {
                             className="rounded-full"
                             disabled={audienceList.length === 0}
                             onClick={() => {
-                              const csv = ['Email', ...audienceList].join('\n');
+                              const csv = [
+                                'Email',
+                                ...audienceList.map((contact) =>
+                                  `"${contact.email.replace(/"/g, '""')}"`,
+                                ),
+                              ].join('\n');
                               const url = URL.createObjectURL(
                                 new Blob([csv], { type: 'text/csv;charset=utf-8' })
                               );
@@ -3706,7 +3992,7 @@ export default function BioLinkApp() {
                               anchor.download = `${data.username || 'biolink'}-audience.csv`;
                               anchor.click();
                               URL.revokeObjectURL(url);
-                              showToast('Daftar audience diekspor');
+                              setAudienceFeedback('Daftar audience berhasil diekspor.');
                             }}
                           >
                             <Download className="size-4" /> Ekspor
@@ -3715,37 +4001,41 @@ export default function BioLinkApp() {
 
                         <div className="mt-4 space-y-2">
                           {audienceList
-                            .filter((email) =>
-                              email.toLowerCase().includes(audienceQuery.trim().toLowerCase())
+                            .filter((contact) =>
+                              contact.email.includes(audienceQuery.trim().toLowerCase())
                             )
-                            .map((email) => (
+                            .map((contact) => (
                               <div
-                                key={email}
+                                key={contact.id}
                                 className="flex items-center rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
                               >
                                 <Mail className="mr-2 size-4 text-slate-400" />
-                                <span className="flex-1 truncate">{email}</span>
+                                <span className="flex-1 truncate">{contact.email}</span>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setAudienceList((prev) => prev.filter((item) => item !== email))
-                                  }
+                                  onClick={() => void handleRemoveAudienceContact(contact)}
                                   className="rounded-full p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                                   title="Hapus audience"
+                                  aria-label={`Hapus ${contact.email}`}
                                 >
                                   <Trash2 className="size-4" />
                                 </button>
                               </div>
                             ))}
 
-                          {audienceList.length === 0 && (
+                          {audienceLoading && (
+                            <p className="py-4 text-center text-sm text-slate-500">
+                              Memuat audience...
+                            </p>
+                          )}
+                          {!audienceLoading && audienceList.length === 0 && (
                             <p className="rounded-xl border border-dashed border-slate-300 py-6 text-center text-sm text-slate-500">
                               Belum ada kontak audience.
                             </p>
                           )}
                           {audienceList.length > 0 &&
                             audienceList.filter((email) =>
-                              email.toLowerCase().includes(audienceQuery.trim().toLowerCase())
+                              email.email.includes(audienceQuery.trim().toLowerCase())
                             ).length === 0 && (
                               <p className="py-4 text-center text-sm text-slate-500">
                                 Tidak ada audience yang cocok.
@@ -4470,36 +4760,65 @@ export default function BioLinkApp() {
                       }}
                       className="hidden min-h-[230px] cursor-pointer overflow-hidden rounded-[18px] border-slate-200 shadow-none transition-colors hover:border-violet-300 md:block"
                     >
-                      <CardHeader className="px-5 py-4">
+                      <CardHeader className="flex-row items-start justify-between px-5 py-4">
                         <CardTitle className="text-[13px]">Audience growth</CardTitle>
+                        <span className="text-xs font-semibold text-violet-600">
+                          +{audienceGrowthThisWeek} minggu ini
+                        </span>
                       </CardHeader>
                       <CardContent className="px-5">
-                        <svg viewBox="0 0 280 128" className="h-[128px] w-full">
-                          <line x1="0" y1="100" x2="280" y2="100" stroke="#f1f5f9" />
-                          <line x1="0" y1="60" x2="280" y2="60" stroke="#f1f5f9" />
-                          <line x1="0" y1="20" x2="280" y2="20" stroke="#f1f5f9" />
-                          <path
-                            d="M0 88 C35 82, 55 92, 80 78 S130 70, 155 60 S210 58, 280 32"
-                            fill="none"
-                            stroke="#ef5aa4"
-                            strokeWidth="2.5"
-                          />
-                          <path
-                            d="M0 105 C42 98, 72 88, 105 92 S160 82, 195 70 S245 58, 280 48"
-                            fill="none"
-                            stroke="#7c3aed"
-                            strokeWidth="2.5"
-                          />
-                          {[70, 105, 140, 175, 210, 245, 280].map((x, index) => (
-                            <circle
-                              key={x}
-                              cx={x}
-                              cy={[88, 82, 92, 78, 70, 60, 32][index]}
-                              r="2.5"
-                              fill="#ef5aa4"
-                            />
-                          ))}
-                        </svg>
+                        <p className="mb-1 text-[11px] text-slate-500">
+                          {audienceList.length} total subscribers
+                        </p>
+                        {audienceLoading ? (
+                          <p className="py-10 text-center text-xs text-slate-500">
+                            Memuat pertumbuhan audience...
+                          </p>
+                        ) : audienceFeedback.startsWith('Gagal') ? (
+                          <p className="py-10 text-center text-xs text-rose-600">
+                            {audienceFeedback}
+                          </p>
+                        ) : audienceList.length === 0 ? (
+                          <p className="py-10 text-center text-xs text-slate-500">
+                            Belum ada subscriber. Bagikan halaman bio untuk mulai mengumpulkan audience.
+                          </p>
+                        ) : (
+                          <>
+                            <svg
+                              viewBox="0 0 280 128"
+                              role="img"
+                              aria-label="Grafik pertumbuhan subscriber selama tujuh hari terakhir"
+                              className="h-[104px] w-full"
+                            >
+                              <line x1="8" y1="108" x2="272" y2="108" stroke="#f1f5f9" />
+                              <line x1="8" y1="66" x2="272" y2="66" stroke="#f1f5f9" />
+                              <line x1="8" y1="24" x2="272" y2="24" stroke="#f1f5f9" />
+                              <polyline
+                                points={audienceGrowthPoints}
+                                fill="none"
+                                stroke="#7c3aed"
+                                strokeWidth="2.5"
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                              />
+                              {audienceGrowthSeries.map(({ x, y, total, label }) => (
+                                <circle
+                                  key={label}
+                                  cx={x}
+                                  cy={y}
+                                  r="2.5"
+                                  fill="#7c3aed"
+                                >
+                                  <title>{`${label}: ${total} subscribers`}</title>
+                                </circle>
+                              ))}
+                            </svg>
+                            <div className="flex justify-between text-[10px] text-slate-400">
+                              <span>{audienceGrowthSeries[0].label}</span>
+                              <span>{audienceGrowthSeries[6].label}</span>
+                            </div>
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
