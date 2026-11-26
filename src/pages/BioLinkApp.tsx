@@ -251,15 +251,6 @@ const sanitizeLegacyProfileValue = (
   }
 
   if (
-    kind === 'username' &&
-    (legacyText.includes('dafa') ||
-      legacyText.includes('ghaitsa') ||
-      legacyText.includes('perdafos'))
-  ) {
-    return 'john-doe';
-  }
-
-  if (
     kind === 'bio' &&
     (legacyText.includes('full-stack web developer') ||
       legacyText.includes('iot enthusiast') ||
