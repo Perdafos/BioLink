@@ -949,7 +949,9 @@ const LivePhoneMockup: React.FC<{
                           className="flex min-h-[48px] w-full items-center gap-2.5 px-3.5 py-2.5 text-left"
                         >
                           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/15">
-                            <FolderGit2 className="size-4" />
+                            {renderLinkIcon(link) || (
+                              <FolderGit2 className="size-4" />
+                            )}
                           </span>
                           <span className="min-w-0 flex-1 truncate text-center text-xs font-medium">
                             {link.title}
@@ -2735,7 +2737,14 @@ export default function BioLinkApp() {
           ...prev,
           links: prev.links.map((link) =>
             link.id === editingLink.id
-              ? { ...link, title: modalTitle.trim(), url: '', type: 'group', groupId: undefined }
+              ? {
+                  ...link,
+                  title: modalTitle.trim(),
+                  url: '',
+                  type: 'group',
+                  groupId: undefined,
+                  iconUrl: modalIconUrl.trim() || undefined,
+                }
               : link
           ),
         }));
@@ -2750,6 +2759,7 @@ export default function BioLinkApp() {
               active: true,
               clicks: 0,
               type: 'group',
+              iconUrl: modalIconUrl.trim() || undefined,
             },
             ...prev.links,
           ],
@@ -5414,7 +5424,7 @@ export default function BioLinkApp() {
                       </span>
                       {link.type === 'group' ? (
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600">
-                          <FolderGit2 className="size-4" />
+                          {renderLinkIcon(link) || <FolderGit2 className="size-4" />}
                         </div>
                       ) : renderLinkIcon(link) ? (
                         <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0">
@@ -6572,6 +6582,48 @@ export default function BioLinkApp() {
                     />
                   </div>
                 </>
+              )}
+
+              {modalItemType === 'group' && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Ikon Kelompok
+                    </label>
+                    {modalIconUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setModalIconUrl('')}
+                        className="text-[11px] font-medium text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Gunakan ikon default
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    {Object.entries(LINK_LUCIDE_ICONS).map(([key, { label, icon: IconComp }]) => {
+                      const token = `lucide:${key}`;
+                      const selected = modalIconUrl === token;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          title={label}
+                          aria-label={`Pilih ikon ${label}`}
+                          aria-pressed={selected}
+                          onClick={() => setModalIconUrl(selected ? '' : token)}
+                          className={`h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                            selected
+                              ? 'bg-violet-600 text-white shadow-2xs'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:border-violet-400 hover:text-violet-600'
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
 
               <button
