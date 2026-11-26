@@ -189,7 +189,7 @@ const PUBLIC_USERNAME_VALUE = (PROFILE_QUERY_USERNAME || PATH_USERNAME)?.trim();
 const PUBLIC_USERNAME = PUBLIC_USERNAME_VALUE ? PUBLIC_USERNAME_VALUE.toLowerCase() : null;
 
 const getPublicProfileUrl = (username: string) =>
-  `${APP_URL}/?profile=${encodeURIComponent(username.trim().toLowerCase())}`;
+  `${APP_URL}/${encodeURIComponent(username.trim().toLowerCase())}`;
 
 const DEFAULT_AVATAR_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23E2E8F0'/%3E%3Ccircle cx='100' cy='78' r='38' fill='%2394A3B8'/%3E%3Cpath d='M35 185c8-47 31-70 65-70s57 23 65 70' fill='%2394A3B8'/%3E%3C/svg%3E";
@@ -1264,6 +1264,7 @@ export default function BioLinkApp() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [accountName, setAccountName] = useState('John Doe');
   const [accountAvatar, setAccountAvatar] = useState(INITIAL_STATE.avatarUrl);
   const [authProvider, setAuthProvider] = useState('email');
@@ -1315,6 +1316,25 @@ export default function BioLinkApp() {
       toastTimeoutRef.current = null;
     }, 5000);
   }, []);
+
+  const copyTextToClipboard = useCallback(
+    async (text: string, label: string) => {
+      try {
+        if (!navigator.clipboard?.writeText) {
+          throw new Error('Clipboard tidak tersedia di browser ini.');
+        }
+        await navigator.clipboard.writeText(text);
+        showToast(`${label} berhasil disalin`);
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+        console.error('Gagal menyalin ke clipboard:', error);
+        showToast(`Gagal menyalin ${label.toLowerCase()}: ${message}`);
+        return false;
+      }
+    },
+    [showToast],
+  );
 
   useEffect(
     () => () => {
@@ -1865,66 +1885,78 @@ export default function BioLinkApp() {
       showToast('Anda harus masuk terlebih dahulu');
       return;
     }
+    if (isCreatingProfile) return;
 
-    const profileId = crypto.randomUUID();
-    const suffix = Date.now().toString().slice(-6);
-    const username = `BioLink-${suffix}`;
-    const newProfile: BioPageState = {
-      ...INITIAL_STATE,
-      accountEmail: data.accountEmail,
-      username,
-      displayName: '',
-      bio: '',
-      links: [],
-    };
-
-    const { error } = await supabase.from('bio_profiles').insert({
-      id: profileId,
-      owner_id: userId,
-      username: newProfile.username,
-      display_name: newProfile.displayName,
-      bio: newProfile.bio,
-      avatar_url: newProfile.avatarUrl,
-      banner_color: newProfile.bannerColor,
-      banner_url: newProfile.bannerUrl,
-      header_layout: newProfile.headerLayout,
-      profile_shape: newProfile.profileShape,
-      title_color: newProfile.titleColor,
-      wallpaper_color: newProfile.wallpaperColor,
-      button_color: newProfile.buttonColor,
-      button_text_color: newProfile.buttonTextColor,
-      button_variant: newProfile.buttonVariant,
-      font_family: newProfile.fontFamily,
-      show_footer_badge: newProfile.showFooterBadge,
-      seo_title: newProfile.seoTitle,
-      seo_description: newProfile.seoDescription,
-      no_index: newProfile.noIndex,
-      socials: newProfile.socials,
-      links: newProfile.links,
-      stickers: newProfile.stickers,
-    });
-
-    if (error) {
-      showToast(`Gagal membuat BioLink: ${error.message}`);
-      return;
-    }
-
-    setProfiles((prev) => [
-      ...prev,
-      {
-        id: profileId,
+    setIsCreatingProfile(true);
+    try {
+      const profileId = crypto.randomUUID();
+      const username = `biolink-${crypto.randomUUID().slice(0, 8).toLowerCase()}`;
+      const newProfile: BioPageState = {
+        ...INITIAL_STATE,
+        accountEmail: data.accountEmail,
         username,
+        displayName: '',
+        bio: '',
+        links: [],
+      };
+
+      const { error } = await supabase.from('bio_profiles').insert({
+        id: profileId,
+        owner_id: userId,
+        username: newProfile.username,
         display_name: newProfile.displayName,
+        bio: newProfile.bio,
         avatar_url: newProfile.avatarUrl,
-      },
-    ]);
-    void refreshProfiles();
-    setActiveProfileId(profileId);
-    setData(newProfile);
-    setShowProfileMenu(false);
-    setDashboardView('editor');
-    setDashboardSection('overview');
-    setStep('dashboard');
+        banner_color: newProfile.bannerColor,
+        banner_url: newProfile.bannerUrl,
+        header_layout: newProfile.headerLayout,
+        profile_shape: newProfile.profileShape,
+        title_color: newProfile.titleColor,
+        wallpaper_color: newProfile.wallpaperColor,
+        button_color: newProfile.buttonColor,
+        button_text_color: newProfile.buttonTextColor,
+        button_variant: newProfile.buttonVariant,
+        font_family: newProfile.fontFamily,
+        show_footer_badge: newProfile.showFooterBadge,
+        seo_title: newProfile.seoTitle,
+        seo_description: newProfile.seoDescription,
+        no_index: newProfile.noIndex,
+        socials: newProfile.socials,
+        links: newProfile.links,
+        stickers: newProfile.stickers,
+      });
+
+      if (error) {
+        showToast(`Gagal membuat BioLink: ${error.message}`);
+        return;
+      }
+
+      setProfiles((prev) => [
+        ...prev,
+        {
+          id: profileId,
+          username,
+          display_name: newProfile.displayName,
+          avatar_url: newProfile.avatarUrl,
+        },
+      ]);
+      void refreshProfiles();
+      setActiveProfileId(profileId);
+      window.localStorage.setItem('biolink-active-profile-id', profileId);
+      setData(newProfile);
+      setShowProfileMenu(false);
+      setShowAccountMenu(false);
+      setDashboardView('editor');
+      setDashboardSection('overview');
+      setStep('dashboard');
+      showToast('BioLink baru berhasil dibuat');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      console.error('Gagal membuat BioLink:', error);
+      showToast(`Gagal membuat BioLink: ${message}`);
+    } finally {
+      setIsCreatingProfile(false);
+    }
   };
 
   const deleteProfile = async (profileId: string) => {
@@ -2033,7 +2065,9 @@ export default function BioLinkApp() {
   const saveProfileToCloud = useCallback(async (profileData: BioPageState = data) => {
     if (!userId || !activeProfileId) {
       setSyncStatus('error');
-      setSyncError('Tidak ada profil aktif untuk disimpan.');
+      const message = 'Tidak ada profil aktif untuk disimpan.';
+      setSyncError(message);
+      showToast(message);
       return false;
     }
 
@@ -2102,7 +2136,7 @@ export default function BioLinkApp() {
 
   const handleManualProfileSave = async () => {
     if (await saveProfileToCloud()) {
-      showToast('Perubahan berhasil disimpan');
+      showToast('BioLink berhasil disimpan dan dipublikasikan');
     }
   };
 
@@ -2165,12 +2199,27 @@ export default function BioLinkApp() {
     showToast('Perubahan dikembalikan');
   };
 
-  const handleCopyShareUrl = () => {
+  const handleCopyShareUrl = async () => {
     const shareLink = getPublicProfileUrl(data.username || 'john-doe');
-    navigator.clipboard?.writeText(shareLink);
+    if (!(await copyTextToClipboard(shareLink, 'Link BioLink'))) return;
     setCopied(true);
-    showToast(`Link disalin: ${shareLink}`);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareLink = async (link: LinkItem) => {
+    if (!navigator.share) {
+      await copyTextToClipboard(link.url, 'Link');
+      return;
+    }
+
+    try {
+      await navigator.share({ title: link.title, url: link.url });
+      showToast('Link berhasil dibagikan');
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      showToast(`Gagal membagikan link: ${message}`);
+    }
   };
 
   const handleDownloadBusinessCardQr = () => {
@@ -2950,27 +2999,14 @@ export default function BioLinkApp() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(activeShareLink.url);
-                    showToast('Link disalin');
-                  }}
+                  onClick={() => void copyTextToClipboard(activeShareLink.url, 'Link')}
                   className="h-11 rounded-full border border-slate-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Copy className="w-4 h-4" /> Copy link
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (navigator.share) {
-                      await navigator.share({
-                        title: activeShareLink.title,
-                        url: activeShareLink.url,
-                      });
-                    } else {
-                      navigator.clipboard?.writeText(activeShareLink.url);
-                      showToast('Link disalin');
-                    }
-                  }}
+                  onClick={() => void handleShareLink(activeShareLink)}
                   className="h-11 rounded-full bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Share2 className="w-4 h-4" /> Bagikan
@@ -3630,9 +3666,15 @@ export default function BioLinkApp() {
                   <button
                     type="button"
                     onClick={() => void createProfile()}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50"
+                    disabled={isCreatingProfile}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50 disabled:cursor-wait disabled:opacity-60"
                   >
-                    <Plus className="size-3.5" /> Tambah BioLink
+                    {isCreatingProfile ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="size-3.5" />
+                    )}
+                    {isCreatingProfile ? 'Membuat...' : 'Tambah BioLink'}
                   </button>
                   <button
                     type="button"
@@ -4878,12 +4920,17 @@ export default function BioLinkApp() {
                     <button
                       type="button"
                       onClick={() => void createProfile()}
-                      className="group grid h-[278px] w-[218px] place-items-center rounded-[17px] border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600 cursor-pointer"
+                      disabled={isCreatingProfile}
+                      className="group grid h-[278px] w-[218px] place-items-center rounded-[17px] border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600 disabled:cursor-wait disabled:opacity-60"
                       aria-label="Tambah BioLink"
                       title="Tambah BioLink"
                     >
                       <span className="grid size-12 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition-colors group-hover:border-violet-200 group-hover:text-violet-600">
-                        <Plus className="size-6" strokeWidth={2} />
+                        {isCreatingProfile ? (
+                          <Loader2 className="size-5 animate-spin" />
+                        ) : (
+                          <Plus className="size-6" strokeWidth={2} />
+                        )}
                       </span>
                     </button>
                   </div>
@@ -5099,10 +5146,15 @@ export default function BioLinkApp() {
                   setShowAccountMenu(false);
                   void createProfile();
                 }}
+                disabled={isCreatingProfile}
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-2 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Tambah BioLink
+                {isCreatingProfile ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                {isCreatingProfile ? 'Membuat...' : 'Tambah BioLink'}
               </button>
               <button
                 type="button"
@@ -5273,7 +5325,7 @@ export default function BioLinkApp() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                 <button
                   type="button"
                   onClick={() => setStep('step-links')}
@@ -5297,6 +5349,14 @@ export default function BioLinkApp() {
                 >
                   <FolderGit2 className="w-4 h-4" />
                   Add Group
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleManualProfileSave()}
+                  className="py-3 px-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  Save &amp; Publish
                 </button>
               </div>
 
@@ -5502,7 +5562,7 @@ export default function BioLinkApp() {
                   </button>
                   <button
                     type="button"
-                  onClick={() => void handleManualProfileSave()}
+                    onClick={() => void handleManualProfileSave()}
                     className="px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Save
@@ -6642,27 +6702,14 @@ export default function BioLinkApp() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText(activeShareLink.url);
-                  showToast('Link disalin');
-                }}
+                onClick={() => void copyTextToClipboard(activeShareLink.url, 'Link')}
                 className="h-11 rounded-full border border-slate-200 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Copy className="w-4 h-4" /> Copy link
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  if (navigator.share) {
-                    await navigator.share({
-                      title: activeShareLink.title,
-                      url: activeShareLink.url,
-                    });
-                  } else {
-                    navigator.clipboard?.writeText(activeShareLink.url);
-                    showToast('Link disalin');
-                  }
-                }}
+                onClick={() => void handleShareLink(activeShareLink)}
                 className="h-11 rounded-full bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Share2 className="w-4 h-4" /> Bagikan
