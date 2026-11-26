@@ -1,0 +1,8 @@
+project_id = "biolink"
+
+[auth.email.smtp]
+sender_name = "BioLink"
+
+[auth.email.template.confirmation]
+subject = "Konfirmasi email Anda untuk BioLink"
+content_path = "./supabase/templates/confirmation.html"
