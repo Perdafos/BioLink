@@ -3833,6 +3833,10 @@ export default function BioLinkApp() {
                           key={String(label)}
                           type="button"
                           onClick={() => {
+                            if (label === 'Username') {
+                              setDashboardSection('settings');
+                              return;
+                            }
                             setDashboardView('editor');
                             setDashboardTab(tab as DashboardTab);
                           }}
@@ -5703,35 +5707,6 @@ export default function BioLinkApp() {
                       onChange={handleAvatarUpload}
                       className="hidden"
                     />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
-                <label className="text-xs font-semibold text-slate-700 pt-3">Username</label>
-                <div className="sm:col-span-2">
-                  <div className="flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white focus-within:border-sky-500">
-                    <span className="shrink-0 border-r border-slate-100 px-3 py-3 text-sm text-slate-400">
-                      BioLink/
-                    </span>
-                    <input
-                      type="text"
-                      maxLength={30}
-                      value={data.username}
-                      onChange={(e) =>
-                        updateDataWithHistory((prev) => ({
-                          ...prev,
-                          username: e.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9-]/g, ''),
-                        }))
-                      }
-                      className="min-w-0 flex-1 px-3 py-3 text-sm text-slate-900 outline-none"
-                      placeholder="john-doe"
-                    />
-                  </div>
-                  <div className="text-right text-[11px] text-slate-400 mt-1">
-                    {data.username.length}/30
                   </div>
                 </div>
               </div>
