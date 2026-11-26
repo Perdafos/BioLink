@@ -5325,37 +5325,37 @@ export default function BioLinkApp() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <button
                   type="button"
                   onClick={() => setStep('step-links')}
-                  className="py-3 px-4 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-2 text-[11px] font-semibold text-slate-800 transition-colors hover:bg-slate-200 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <LayoutGrid className="w-4 h-4 text-slate-600" />
-                  Quick Setup Links
+                  <LayoutGrid className="size-3.5 shrink-0 text-slate-600" />
+                  Quick Setup
                 </button>
                 <button
                   type="button"
                   onClick={openCreateModal}
-                  className="py-3 px-4 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="whitespace-nowrap rounded-full bg-sky-500 px-2.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-sky-600 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="size-3.5 shrink-0" />
                   Add Link
                 </button>
                 <button
                   type="button"
                   onClick={openCreateGroupModal}
-                  className="py-3 px-4 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="whitespace-nowrap rounded-full bg-violet-600 px-2.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-violet-700 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <FolderGit2 className="w-4 h-4" />
+                  <FolderGit2 className="size-3.5 shrink-0" />
                   Add Group
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleManualProfileSave()}
-                  className="py-3 px-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="whitespace-nowrap rounded-full bg-emerald-600 px-2.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Check className="w-4 h-4" />
+                  <Check className="size-3.5 shrink-0" />
                   Save &amp; Publish
                 </button>
               </div>
