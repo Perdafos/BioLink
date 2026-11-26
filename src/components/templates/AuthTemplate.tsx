@@ -70,7 +70,7 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = (props) => {
       <aside className="lg:col-span-5 xl:col-span-4 bg-slate-50 border-b lg:border-b-0 lg:border-r border-slate-200/80 p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
         {/* Header / Logo */}
         <div className="relative z-10">
-          <BrandHeader />
+          <BrandHeader username={props.username} />
         </div>
 
         {/* Hero Copy */}
