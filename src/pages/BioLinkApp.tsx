@@ -232,27 +232,7 @@ const INITIAL_STATE: BioPageState = {
   stickers: [],
 };
 
-const LOCAL_ACCOUNTS_KEY = 'biolink-local-accounts';
 const LOCAL_SESSION_KEY = 'biolink-local-session';
-const LOCAL_ADMIN_EMAIL = 'admin@perdafos.my.id';
-const LOCAL_ADMIN_PASSWORD = 'admin123';
-const LOCAL_ADMIN_ID = '11111111-1111-4111-8111-111111111111';
-
-interface LocalAccount {
-  id: string;
-  email: string;
-  passwordHash: string;
-  username: string;
-  displayName: string;
-}
-
-const hashPassword = async (password: string) => {
-  const bytes = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-};
 
 const sanitizeLegacyProfileValue = (
   value: string,
@@ -1169,6 +1149,7 @@ export default function BioLinkApp() {
   const [authSubmitting, setAuthSubmitting] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // Login / Register inputs
@@ -1977,55 +1958,18 @@ export default function BioLinkApp() {
     showToast('BioLink berhasil dihapus');
   };
 
-  // Restore Supabase sessions for OAuth users and local sessions for email accounts.
+  // Restore authenticated Supabase sessions.
   useEffect(() => {
     let mounted = true;
-    const restoreLocalSession = () => {
-      const savedSession = window.localStorage.getItem(LOCAL_SESSION_KEY);
-      if (!savedSession) return false;
-
-      try {
-        const session = JSON.parse(savedSession) as {
-          id: string;
-          email: string;
-          username: string;
-          displayName: string;
-        };
-        setUserId(session.id);
-        setAuthProvider('email');
-        setAccountName(session.displayName);
-        setData({
-          ...INITIAL_STATE,
-          accountEmail: session.email,
-          username: session.username,
-          displayName: '',
-        });
-        setProfiles([{
-          id: session.id,
-          username: session.username,
-          display_name: '',
-          avatar_url: null,
-        }]);
-        setActiveProfileId(session.id);
-        setStep('dashboard');
-        return true;
-      } catch {
-        window.localStorage.removeItem(LOCAL_SESSION_KEY);
-        return false;
-      }
-
-    };
 
     const restoreSession = async () => {
       try {
+        window.localStorage.removeItem(LOCAL_SESSION_KEY);
         const { data: { session }, error } = await supabase.auth.getSession();
         if (!mounted) return;
 
         if (error) {
-          const restoredLocalSession = restoreLocalSession();
-          if (!restoredLocalSession) {
-            setAuthError(`Gagal memeriksa sesi: ${error.message}`);
-          }
+          setAuthError(`Gagal memeriksa sesi: ${error.message}`);
           return;
         }
 
@@ -2036,21 +1980,16 @@ export default function BioLinkApp() {
           await loadUserProfile(
             session.user.id,
             session.user.email || '',
-            undefined,
+            typeof metadata.username === 'string' ? metadata.username : undefined,
             false,
             metadata.full_name || metadata.name || metadata.display_name,
             metadata.avatar_url || metadata.picture,
           );
-        } else {
-          restoreLocalSession();
         }
       } catch (error) {
         if (!mounted) return;
-        const restoredLocalSession = restoreLocalSession();
-        if (!restoredLocalSession) {
-          const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
-          setAuthError(`Gagal memeriksa sesi: ${message}`);
-        }
+        const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+        setAuthError(`Gagal memeriksa sesi: ${message}`);
       } finally {
         if (mounted) setAuthLoading(false);
       }
@@ -2352,6 +2291,7 @@ export default function BioLinkApp() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setAuthNotice(null);
     setAuthSubmitting(true);
 
     try {
@@ -2367,115 +2307,84 @@ export default function BioLinkApp() {
           return;
         }
 
-        const storedAccounts = JSON.parse(
-          window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
-        ) as LocalAccount[];
-        if (
-          cleanEmail === LOCAL_ADMIN_EMAIL ||
-          storedAccounts.some((account) =>
-            account.email === cleanEmail || account.username === cleanUser
-          )
-        ) {
-          setAuthError('Email atau username sudah digunakan.');
+        const { data: usernameAvailable, error: availabilityError } = await supabase.rpc(
+          'check_username_available',
+          { p_username: cleanUser },
+        );
+        if (availabilityError) {
+          setAuthError(`Gagal memeriksa username: ${availabilityError.message}`);
+          return;
+        }
+        if (!usernameAvailable) {
+          setAuthError('Username sudah digunakan.');
           return;
         }
 
-        const account: LocalAccount = {
-          id: crypto.randomUUID(),
+        const displayName = getNameFromEmail(cleanEmail);
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email: cleanEmail,
-          passwordHash: await hashPassword(loginPassword),
-          username: cleanUser,
-          displayName: getNameFromEmail(cleanEmail),
-        };
-        window.localStorage.setItem(
-          LOCAL_ACCOUNTS_KEY,
-          JSON.stringify([...storedAccounts, account]),
-        );
-        window.localStorage.setItem(
-          LOCAL_SESSION_KEY,
-          JSON.stringify({
-            id: account.id,
-            email: account.email,
-            username: account.username,
-            displayName: account.displayName,
-          }),
-        );
-        setUserId(account.id);
-        setAuthProvider('email');
-        setAccountName(account.displayName);
-        setActiveProfileId(account.id);
-        setProfiles([{
-          id: account.id,
-          username: account.username,
-          display_name: '',
-          avatar_url: null,
-        }]);
-        setData({
-          ...INITIAL_STATE,
-          accountEmail: account.email,
-          username: account.username,
-          displayName: '',
+          password: loginPassword,
+          options: {
+            emailRedirectTo: APP_URL,
+            data: {
+              username: cleanUser,
+              display_name: displayName,
+            },
+          },
         });
-        setStep('dashboard');
-        showToast('Akun lokal berhasil dibuat!');
+        if (error) {
+          setAuthError(`Gagal membuat akun: ${error.message}`);
+          return;
+        }
+
+        if (signUpData.session && signUpData.user) {
+          setUserId(signUpData.user.id);
+          setAuthProvider(signUpData.user.app_metadata?.provider || 'email');
+          await loadUserProfile(
+            signUpData.user.id,
+            cleanEmail,
+            cleanUser,
+            true,
+            displayName,
+          );
+        } else {
+          setAuthNotice(
+            'Jika email dapat didaftarkan, tautan verifikasi akan dikirim. Periksa inbox atau spam; jika sudah punya akun, silakan masuk.',
+          );
+          setAuthMode('login');
+        }
       } else {
         const cleanEmail = loginEmail.trim().toLowerCase();
-        const storedAccounts = JSON.parse(
-          window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
-        ) as LocalAccount[];
-
-        let account: LocalAccount | null = null;
-        if (cleanEmail === LOCAL_ADMIN_EMAIL && loginPassword === LOCAL_ADMIN_PASSWORD) {
-          account = {
-            id: LOCAL_ADMIN_ID,
-            email: LOCAL_ADMIN_EMAIL,
-            passwordHash: '',
-            username: 'admin',
-            displayName: 'Admin',
-          };
-        } else {
-          const passwordHash = await hashPassword(loginPassword);
-          account =
-            storedAccounts.find((item) =>
-              item.email === cleanEmail && item.passwordHash === passwordHash
-            ) || null;
-        }
-
-        if (!account) {
-          setAuthError('Email atau kata sandi salah.');
+        const { data: signInData, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: loginPassword,
+        });
+        if (error) {
+          setAuthError(`Gagal masuk: ${error.message}`);
           return;
         }
 
-        window.localStorage.setItem(
-          LOCAL_SESSION_KEY,
-          JSON.stringify({
-            id: account.id,
-            email: account.email,
-            username: account.username,
-            displayName: account.displayName,
-          }),
+        const user = signInData.user;
+        if (!user) {
+          setAuthError('Login berhasil tetapi data akun tidak ditemukan. Silakan coba lagi.');
+          return;
+        }
+
+        setUserId(user.id);
+        setAuthProvider(user.app_metadata?.provider || 'email');
+        const metadata = user.user_metadata || {};
+        await loadUserProfile(
+          user.id,
+          user.email || cleanEmail,
+          typeof metadata.username === 'string' ? metadata.username : undefined,
+          false,
+          metadata.full_name || metadata.name || metadata.display_name,
+          metadata.avatar_url || metadata.picture,
         );
-        setUserId(account.id);
-        setAuthProvider('email');
-        setAccountName(account.displayName);
-        setActiveProfileId(account.id);
-        setProfiles([{
-          id: account.id,
-          username: account.username,
-          display_name: '',
-          avatar_url: null,
-        }]);
-        setData({
-          ...INITIAL_STATE,
-          accountEmail: account.email,
-          username: account.username,
-          displayName: '',
-        });
-        setStep('dashboard');
-        showToast('Berhasil masuk!');
       }
-    } catch {
-      setAuthError('Terjadi kesalahan saat memproses akun.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      setAuthError(`Terjadi kesalahan saat memproses akun: ${message}`);
     } finally {
       setAuthSubmitting(false);
     }
@@ -2505,14 +2414,11 @@ export default function BioLinkApp() {
   };
 
   const handleLogout = async () => {
-    if (authProvider !== 'email') {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        showToast(`Gagal keluar dari akun: ${error.message}`);
-        return;
-      }
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      showToast(`Gagal keluar dari akun: ${error.message}`);
+      return;
     }
-    window.localStorage.removeItem(LOCAL_SESSION_KEY);
     window.localStorage.removeItem('biolink-active-profile-id');
     setUserId(null);
     setAuthProvider('email');
@@ -2568,19 +2474,11 @@ export default function BioLinkApp() {
       return;
     }
 
-    if (data.accountEmail === LOCAL_ADMIN_EMAIL) {
-      showToast('Password akun admin dummy tidak dapat diubah dari aplikasi.');
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      showToast(`Gagal mengganti password: ${error.message}`);
       return;
     }
-
-    const storedAccounts = JSON.parse(
-      window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
-    ) as LocalAccount[];
-    const passwordHash = await hashPassword(newPassword);
-    const updatedAccounts = storedAccounts.map((account) =>
-      account.id === userId ? { ...account, passwordHash } : account
-    );
-    window.localStorage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
     setNewPassword('');
     setConfirmPassword('');
     showToast('Password berhasil diganti');
@@ -2592,21 +2490,27 @@ export default function BioLinkApp() {
     );
     if (!confirmed || !userId) return;
 
-    if (userId !== LOCAL_ADMIN_ID) {
-      const storedAccounts = JSON.parse(
-        window.localStorage.getItem(LOCAL_ACCOUNTS_KEY) || '[]',
-      ) as LocalAccount[];
-      window.localStorage.setItem(
-        LOCAL_ACCOUNTS_KEY,
-        JSON.stringify(storedAccounts.filter((account) => account.id !== userId)),
-      );
+    const { error } = await supabase.rpc('delete_account');
+    if (error) {
+      showToast(`Gagal menghapus akun: ${error.message}`);
+      return;
     }
-    window.localStorage.removeItem(LOCAL_SESSION_KEY);
+
+    const { error: signOutError } = await supabase.auth.signOut();
     window.localStorage.removeItem('biolink-active-profile-id');
     setUserId(null);
+    setAuthProvider('email');
+    setActiveProfileId(null);
+    setProfiles([]);
     setData(INITIAL_STATE);
+    setAccountName('John Doe');
+    setAccountAvatar(INITIAL_STATE.avatarUrl);
     setStep('login');
-    showToast('Profil berhasil dihapus');
+    showToast(
+      signOutError
+        ? `Akun sudah dihapus, tetapi sesi gagal diakhiri: ${signOutError.message}`
+        : 'Akun berhasil dihapus',
+    );
   };
 
   // --- STEP 1: ONBOARDING ADD LINK ---
@@ -2997,10 +2901,12 @@ export default function BioLinkApp() {
         password={loginPassword}
         username={loginUsername}
         error={authError}
+        notice={authNotice}
         submitting={authSubmitting}
         onModeChange={(mode) => {
           setAuthMode(mode);
           setAuthError(null);
+          setAuthNotice(null);
         }}
         onEmailChange={setLoginEmail}
         onPasswordChange={setLoginPassword}

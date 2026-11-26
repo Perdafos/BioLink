@@ -10,6 +10,7 @@ type AuthTemplateProps = {
   password: string;
   username: string;
   error: string | null;
+  notice: string | null;
   submitting: boolean;
   onModeChange: (mode: AuthMode) => void;
   onEmailChange: (value: string) => void;
@@ -131,6 +132,14 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = (props) => {
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{props.error}</span>
+              </div>
+            )}
+            {props.notice && (
+              <div
+                role="status"
+                className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium"
+              >
+                {props.notice}
               </div>
             )}
 
