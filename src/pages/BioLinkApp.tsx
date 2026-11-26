@@ -3615,7 +3615,9 @@ export default function BioLinkApp() {
                   className="size-8 shrink-0 rounded-full object-cover"
                 />
                 <div className="min-w-0 w-[120px]">
-                  <p className="truncate text-xs font-bold text-slate-900">{accountName}</p>
+                  <p className="truncate text-xs font-bold text-slate-900">
+                    {data.username || accountName}
+                  </p>
                   <p className="truncate text-[10px] text-slate-400">{data.accountEmail}</p>
                 </div>
                 <ChevronDown className="size-4 text-slate-400" />
@@ -5065,10 +5067,12 @@ export default function BioLinkApp() {
           >
             <img
               src={accountAvatar}
-              alt={accountName}
+              alt={data.username || accountName}
               className="w-6 h-6 rounded-full object-cover bg-sky-100"
             />
-            <span className="max-w-[160px] sm:max-w-[220px] truncate">{accountName}</span>
+            <span className="max-w-[160px] sm:max-w-[220px] truncate">
+              {data.username || accountName}
+            </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
@@ -5078,7 +5082,9 @@ export default function BioLinkApp() {
               className="absolute left-1/2 -translate-x-1/2 mt-2 w-60 bg-white border border-slate-200 rounded-2xl shadow-lg p-2 z-40 space-y-1"
             >
               <div className="px-3 py-2 border-b border-slate-100">
-                <p className="text-xs font-bold text-slate-900 truncate">{accountName}</p>
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  {data.username || accountName}
+                </p>
                 <p className="text-[11px] text-slate-400 truncate">
                   {data.accountEmail || `biolink.id/${data.username}`}
                 </p>
