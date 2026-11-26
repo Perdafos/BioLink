@@ -1139,6 +1139,8 @@ const LivePhoneMockup: React.FC<{
 
 export default function BioLinkApp() {
   const [data, setData] = useState<BioPageState>(INITIAL_STATE);
+  const [usernameDraft, setUsernameDraft] = useState(INITIAL_STATE.username);
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
   const [step, setStep] = useState<AppStep>('login');
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
@@ -1210,6 +1212,10 @@ export default function BioLinkApp() {
   useEffect(() => {
     setBusinessCardName(data.displayName);
   }, [data.displayName]);
+
+  useEffect(() => {
+    setUsernameDraft(data.username);
+  }, [data.username]);
 
   useEffect(() => {
     setContactEmail(data.accountEmail);
@@ -2479,8 +2485,9 @@ export default function BioLinkApp() {
   };
 
   const handleSaveSettings = async () => {
+    setIsSavingUsername(true);
     try {
-      const username = data.username.trim().toLowerCase();
+      const username = usernameDraft.trim().toLowerCase();
       if (!username) {
         showToast('Username tidak boleh kosong');
         return;
@@ -2565,6 +2572,8 @@ export default function BioLinkApp() {
       const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
       console.error('Gagal menyimpan username:', error);
       showToast(`Gagal menyimpan username: ${message}`);
+    } finally {
+      setIsSavingUsername(false);
     }
   };
 
@@ -3891,23 +3900,24 @@ export default function BioLinkApp() {
                         <div className="flex rounded-xl border border-slate-200">
                           <span className="px-3 py-2.5 text-sm text-slate-400">biolink.id/</span>
                           <input
-                            value={data.username}
+                            value={usernameDraft}
                             maxLength={30}
                             onChange={(e) =>
-                              setData((prev) => ({
-                                ...prev,
-                                username: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-                              }))
+                              setUsernameDraft(
+                                e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                              )
                             }
+                            disabled={isSavingUsername}
                             className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none"
                           />
                         </div>
                         <Button
                           type="button"
                           onClick={handleSaveSettings}
+                          disabled={isSavingUsername}
                           className="rounded-full bg-violet-600 hover:bg-violet-700"
                         >
-                          Simpan Username
+                          {isSavingUsername ? 'Menyimpan...' : 'Simpan Username'}
                         </Button>
                       </CardContent>
                     </Card>
