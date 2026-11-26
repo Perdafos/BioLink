@@ -2479,57 +2479,92 @@ export default function BioLinkApp() {
   };
 
   const handleSaveSettings = async () => {
-    const username = data.username.trim().toLowerCase();
-    if (!username) {
-      showToast('Username tidak boleh kosong');
-      return;
-    }
-    if (!/^[a-z0-9-]{1,30}$/.test(username)) {
-      showToast('Username hanya boleh berisi huruf kecil, angka, dan tanda hubung (maksimal 30 karakter).');
-      return;
-    }
-    if (!userId || !activeProfileId) {
-      showToast('Tidak ada profil aktif untuk diperbarui.');
-      return;
-    }
+    try {
+      const username = data.username.trim().toLowerCase();
+      if (!username) {
+        showToast('Username tidak boleh kosong');
+        return;
+      }
+      if (!/^[a-z0-9-]{1,30}$/.test(username)) {
+        showToast('Username hanya boleh berisi huruf kecil, angka, dan tanda hubung (maksimal 30 karakter).');
+        return;
+      }
+      if (!userId || !activeProfileId) {
+        showToast('Tidak ada profil aktif untuk diperbarui.');
+        return;
+      }
 
-    const { data: usernameAvailable, error: availabilityError } = await supabase.rpc(
-      'check_username_available',
-      {
-        p_username: username,
-      },
-    );
+      const { data: usernameAvailable, error: availabilityError } = await supabase.rpc(
+        'check_username_available',
+        {
+          p_username: username,
+        },
+      );
 
-    if (availabilityError) {
-      showToast(`Gagal memeriksa username: ${availabilityError.message}`);
-      return;
-    }
+      if (availabilityError) {
+        showToast(`Gagal memeriksa username: ${availabilityError.message}`);
+        return;
+      }
 
-    const { data: ownProfile, error: profileError } = await supabase
-      .from('bio_profiles')
-      .select('username')
-      .eq('id', activeProfileId)
-      .eq('owner_id', userId)
-      .maybeSingle();
+      const { data: ownProfile, error: profileError } = await supabase
+        .from('bio_profiles')
+        .select('username')
+        .eq('id', activeProfileId)
+        .eq('owner_id', userId)
+        .maybeSingle();
 
-    if (profileError) {
-      showToast(`Gagal memeriksa profil: ${profileError.message}`);
-      return;
-    }
-    if (!ownProfile) {
-      showToast('Profil tidak ditemukan atau Anda tidak memiliki akses.');
-      return;
-    }
+      if (profileError) {
+        showToast(`Gagal memeriksa profil: ${profileError.message}`);
+        return;
+      }
+      if (!ownProfile) {
+        showToast('Profil tidak ditemukan atau Anda tidak memiliki akses.');
+        return;
+      }
 
-    if (usernameAvailable === false && ownProfile.username !== username) {
-      showToast('Username sudah digunakan');
-      return;
-    }
+      const isCurrentUsername = ownProfile.username.trim().toLowerCase() === username;
+      if (usernameAvailable !== true && !isCurrentUsername) {
+        if (usernameAvailable === false) {
+          showToast('Username sudah digunakan');
+        } else {
+          showToast('Tidak dapat memastikan username tersedia. Coba lagi.');
+        }
+        return;
+      }
 
-    const profileToSave = { ...data, username };
-    setData(profileToSave);
-    if (await saveProfileToCloud(profileToSave)) {
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('bio_profiles')
+        .update({
+          username,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', activeProfileId)
+        .eq('owner_id', userId)
+        .select('id, username')
+        .maybeSingle();
+
+      if (updateError) {
+        showToast(`Gagal menyimpan username: ${updateError.message}`);
+        return;
+      }
+      if (!updatedProfile) {
+        showToast('Profil tidak ditemukan atau Anda tidak memiliki akses.');
+        return;
+      }
+
+      setData((prev) => ({ ...prev, username: updatedProfile.username }));
+      setProfiles((prev) =>
+        prev.map((profile) =>
+          profile.id === updatedProfile.id
+            ? { ...profile, username: updatedProfile.username }
+            : profile,
+        ),
+      );
       showToast('Username berhasil disimpan');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      console.error('Gagal menyimpan username:', error);
+      showToast(`Gagal menyimpan username: ${message}`);
     }
   };
 
