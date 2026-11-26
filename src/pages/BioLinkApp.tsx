@@ -44,7 +44,6 @@ import {
   Code2,
   FolderGit2,
   ShoppingBag,
-  Sparkles,
   BookOpen,
   Camera,
   Music,
@@ -114,7 +113,7 @@ interface SocialChannels {
 
 interface BioPageState {
   accountEmail: string;
-  username: string;
+  name: string;
   displayName: string;
   bio: string;
   avatarUrl: string;
@@ -139,7 +138,7 @@ interface BioPageState {
 
 interface ProfileSummary {
   id: string;
-  username: string;
+  name: string;
   display_name: string | null;
   avatar_url: string | null;
 }
@@ -181,15 +180,28 @@ const APP_URL = (
   isLocalHost ? window.location.origin : import.meta.env.VITE_APP_URL || window.location.origin
 ).replace(/\/$/, '');
 
-const PROFILE_QUERY_USERNAME = new URLSearchParams(window.location.search).get('profile');
-const PATH_USERNAME = window.location.pathname === '/'
-  ? null
-  : decodeURIComponent(window.location.pathname).replace(/^\//, '').replace(/\/$/, '') || null;
-const PUBLIC_USERNAME_VALUE = (PROFILE_QUERY_USERNAME || PATH_USERNAME)?.trim();
-const PUBLIC_USERNAME = PUBLIC_USERNAME_VALUE ? PUBLIC_USERNAME_VALUE.toLowerCase() : null;
+const SEARCH_PARAMS = new URLSearchParams(window.location.search);
+const QUERY_ACCOUNT_USERNAME = SEARCH_PARAMS.get('username')?.trim().toLowerCase() || null;
+const QUERY_PAGE_NAME =
+  (SEARCH_PARAMS.get('name') || SEARCH_PARAMS.get('profile'))?.trim().toLowerCase() || null;
 
-const getPublicProfileUrl = (username: string) =>
-  `${APP_URL}/${encodeURIComponent(username.trim().toLowerCase())}`;
+const PATH_SEGMENTS = window.location.pathname
+  .split('/')
+  .filter(Boolean)
+  .map((segment) => decodeURIComponent(segment).trim().toLowerCase());
+
+const PUBLIC_ROUTE =
+  QUERY_ACCOUNT_USERNAME && QUERY_PAGE_NAME
+    ? { accountUsername: QUERY_ACCOUNT_USERNAME, pageName: QUERY_PAGE_NAME }
+    : PATH_SEGMENTS.length === 2
+      ? { accountUsername: PATH_SEGMENTS[0], pageName: PATH_SEGMENTS[1] }
+      : null;
+
+const getPublicProfileUrl = (accountUsername: string, pageName: string) =>
+  `${APP_URL}/${encodeURIComponent((accountUsername || 'user').trim().toLowerCase())}/${encodeURIComponent((pageName || 'main').trim().toLowerCase())}`;
+
+const generateRandomAccountUsername = () =>
+  `user${Math.floor(100000 + Math.random() * 900000)}`;
 
 const DEFAULT_AVATAR_URL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23E2E8F0'/%3E%3Ccircle cx='100' cy='78' r='38' fill='%2394A3B8'/%3E%3Cpath d='M35 185c8-47 31-70 65-70s57 23 65 70' fill='%2394A3B8'/%3E%3C/svg%3E";
@@ -202,7 +214,7 @@ const isCustomBio = (bio: string) =>
 
 const INITIAL_STATE: BioPageState = {
   accountEmail: '',
-  username: 'john-doe',
+  name: 'main',
   displayName: '',
   bio: '',
   avatarUrl: DEFAULT_AVATAR_URL,
@@ -236,7 +248,7 @@ const LOCAL_SESSION_KEY = 'biolink-local-session';
 
 const sanitizeLegacyProfileValue = (
   value: string,
-  kind: 'displayName' | 'username' | 'bio',
+  kind: 'displayName' | 'name' | 'bio',
 ) => {
   const normalized = value.trim();
   const legacyText = normalized.toLowerCase();
@@ -274,7 +286,6 @@ const getNameFromEmail = (email: string) => {
   return formatted || 'John Doe';
 };
 
-// Helper to determine if background hex is light or dark
 function isColorLight(hex: string): boolean {
   const clean = hex.replace('#', '');
   if (clean.length !== 6) return true;
@@ -479,7 +490,6 @@ const LINK_LUCIDE_ICONS: Record<string, { label: string; icon: React.FC<{ classN
   code: { label: 'Code', icon: Code2 },
   github: { label: 'Project', icon: FolderGit2 },
   shop: { label: 'Shop', icon: ShoppingBag },
-  sparkles: { label: 'Featured', icon: Sparkles },
   book: { label: 'Article', icon: BookOpen },
   camera: { label: 'Photo', icon: Camera },
   music: { label: 'Music', icon: Music },
@@ -511,6 +521,7 @@ const renderLinkIcon = (link: LinkItem, sizeClass = 'w-4 h-4') => {
 
 const LivePhoneMockup: React.FC<{
   data: BioPageState;
+  accountUsername: string;
   compact?: boolean;
   skeletonMode?: boolean;
   tilted3D?: boolean;
@@ -522,6 +533,7 @@ const LivePhoneMockup: React.FC<{
   stickersDraggable?: boolean;
 }> = ({
   data,
+  accountUsername,
   compact = false,
   skeletonMode = false,
   tilted3D = false,
@@ -577,7 +589,6 @@ const LivePhoneMockup: React.FC<{
           : 'w-[325px] sm:w-[345px] min-h-[630px] max-h-[76vh] rounded-[40px] border border-slate-200/80 shadow-[0_12px_40px_rgba(15,23,42,0.08)]'
           }`}
       >
-        {/* Scrollable Phone Interior */}
         <div className="h-full overflow-y-auto flex flex-col justify-between pb-6">
           {data.stickers.map((sticker, index) => (
             <div
@@ -699,7 +710,6 @@ const LivePhoneMockup: React.FC<{
             </div>
           ))}
           <div>
-            {/* HEADER LAYOUT: CLASSIC / BANNER / HERO */}
             {data.headerLayout === 'banner' && (
               <div
                 className="w-full h-28 relative overflow-hidden"
@@ -1119,7 +1129,7 @@ const LivePhoneMockup: React.FC<{
             {data.showFooterBadge && (
               <div className="inline-flex items-center gap-1.5 bg-white text-slate-900 border border-slate-200 px-4 py-2 rounded-full text-[11px] font-semibold shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-sky-500" />
-                <span>Join {data.username || 'john-doe'} on BioLink</span>
+                <span>Join @{accountUsername || 'user'} on BioLink</span>
               </div>
             )}
           </div>
@@ -1132,8 +1142,10 @@ const LivePhoneMockup: React.FC<{
 
 export default function BioLinkApp() {
   const [data, setData] = useState<BioPageState>(INITIAL_STATE);
-  const [usernameDraft, setUsernameDraft] = useState(INITIAL_STATE.username);
-  const [isSavingUsername, setIsSavingUsername] = useState(false);
+  const [accountUsername, setAccountUsername] = useState<string>(() => generateRandomAccountUsername());
+  const [accountUsernameDraft, setAccountUsernameDraft] = useState<string>('');
+  const [isSavingAccountUsername, setIsSavingAccountUsername] = useState(false);
+
   const [step, setStep] = useState<AppStep>('login');
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
@@ -1150,10 +1162,10 @@ export default function BioLinkApp() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Login / Register inputs
+  // Login / Register inputs (loginUsername = initial BioLink page `name`)
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPageName, setLoginPageName] = useState('');
 
   // Step 1 Onboarding Link Inputs
   const [quickTitle, setQuickTitle] = useState('');
@@ -1164,7 +1176,6 @@ export default function BioLinkApp() {
 
   // Step 3 Color Onboarding Sub-tab
   const [colorOnboardingTab, setColorOnboardingTab] = useState<'wallpaper' | 'buttons'>('wallpaper');
-
 
   // Dashboard States
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('content');
@@ -1207,8 +1218,8 @@ export default function BioLinkApp() {
   }, [data.displayName]);
 
   useEffect(() => {
-    setUsernameDraft(data.username);
-  }, [data.username]);
+    setAccountUsernameDraft(accountUsername);
+  }, [accountUsername]);
 
   useEffect(() => {
     setContactEmail(data.accountEmail);
@@ -1267,6 +1278,8 @@ export default function BioLinkApp() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [showCreateProfileModal, setShowCreateProfileModal] = useState(false);
+  const [newProfileNameInput, setNewProfileNameInput] = useState('');
   const [accountName, setAccountName] = useState('John Doe');
   const [accountAvatar, setAccountAvatar] = useState(INITIAL_STATE.avatarUrl);
   const [authProvider, setAuthProvider] = useState('email');
@@ -1279,7 +1292,7 @@ export default function BioLinkApp() {
   const [redoStack, setRedoStack] = useState<BioPageState[]>([]);
 
   const [publicProfile, setPublicProfile] = useState<BioPageState | null>(null);
-  const [publicProfileLoading, setPublicProfileLoading] = useState(Boolean(PUBLIC_USERNAME));
+  const [publicProfileLoading, setPublicProfileLoading] = useState(Boolean(PUBLIC_ROUTE));
   const [publicProfileError, setPublicProfileError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1347,7 +1360,7 @@ export default function BioLinkApp() {
 
   useEffect(() => {
     setAudienceLoading(false);
-    if (!data.username) {
+    if (!data.name) {
       setAudienceList([]);
       setAudienceLoadedFor('');
       return;
@@ -1360,7 +1373,7 @@ export default function BioLinkApp() {
 
     if (authProvider === 'email') {
       try {
-        const stored = window.localStorage.getItem(`biolink-audience-${data.username}`);
+        const stored = window.localStorage.getItem(`biolink-audience-${accountUsername}-${data.name}`);
         const parsed: unknown = stored ? JSON.parse(stored) : [];
         const contacts = Array.isArray(parsed)
           ? parsed.flatMap((item, index): AudienceContact[] => {
@@ -1395,7 +1408,7 @@ export default function BioLinkApp() {
         setAudienceList([]);
         setAudienceFeedback('Gagal membaca daftar audience lokal.');
       } finally {
-        setAudienceLoadedFor(data.username);
+        setAudienceLoadedFor(data.name);
       }
       return () => {
         active = false;
@@ -1403,7 +1416,7 @@ export default function BioLinkApp() {
     }
 
     if (!userId || !activeProfileId) {
-      setAudienceLoadedFor(data.username);
+      setAudienceLoadedFor(data.name);
       return () => {
         active = false;
       };
@@ -1424,14 +1437,14 @@ export default function BioLinkApp() {
         } else {
           setAudienceList((contacts || []) as AudienceContact[]);
         }
-        setAudienceLoadedFor(data.username);
+        setAudienceLoadedFor(data.name);
         setAudienceLoading(false);
       } catch (error) {
         if (!active) return;
         const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
         setAudienceFeedback(`Gagal memuat audience: ${message}`);
         setAudienceList([]);
-        setAudienceLoadedFor(data.username);
+        setAudienceLoadedFor(data.name);
         setAudienceLoading(false);
       }
     })();
@@ -1439,21 +1452,21 @@ export default function BioLinkApp() {
     return () => {
       active = false;
     };
-  }, [activeProfileId, authProvider, data.username, userId]);
+  }, [accountUsername, activeProfileId, authProvider, data.name, userId]);
 
   useEffect(() => {
     if (
       authProvider !== 'email' ||
-      !data.username ||
-      audienceLoadedFor !== data.username
+      !data.name ||
+      audienceLoadedFor !== data.name
     ) {
       return;
     }
     window.localStorage.setItem(
-      `biolink-audience-${data.username}`,
+      `biolink-audience-${accountUsername}-${data.name}`,
       JSON.stringify(audienceList),
     );
-  }, [audienceList, audienceLoadedFor, authProvider, data.username]);
+  }, [accountUsername, audienceList, audienceLoadedFor, authProvider, data.name]);
 
   const handleAddAudienceContact = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1514,13 +1527,13 @@ export default function BioLinkApp() {
 
   const handleAudienceSubscription = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!subscriberConsent || !PUBLIC_USERNAME) return;
+    if (!subscriberConsent || !PUBLIC_ROUTE) return;
 
     setSubscriberSubmitting(true);
     setSubscriberFeedback('');
     try {
       const { data: result, error } = await supabase.rpc('subscribe_to_biolink_audience', {
-        p_username: PUBLIC_USERNAME,
+        p_username: PUBLIC_ROUTE.pageName,
         p_email: subscriberEmail.trim().toLowerCase(),
       });
 
@@ -1546,12 +1559,15 @@ export default function BioLinkApp() {
   };
 
   useEffect(() => {
-    if (!PUBLIC_USERNAME) return;
+    if (!PUBLIC_ROUTE) return;
 
     let mounted = true;
 
     supabase
-      .rpc('get_public_profile', { p_username: PUBLIC_USERNAME })
+      .rpc('get_public_profile_by_route', {
+        p_account_username: PUBLIC_ROUTE.accountUsername,
+        p_page_name: PUBLIC_ROUTE.pageName,
+      })
       .maybeSingle()
       .then(({ data: profile, error }) => {
         if (!mounted) return;
@@ -1569,7 +1585,7 @@ export default function BioLinkApp() {
         }
 
         const publicProfileRow = profile as {
-          username: string;
+          name: string;
           display_name: string | null;
           bio: string | null;
           avatar_url: string | null;
@@ -1594,9 +1610,9 @@ export default function BioLinkApp() {
 
         setPublicProfile({
           accountEmail: '',
-          username: sanitizeLegacyProfileValue(publicProfileRow.username, 'username'),
+          name: sanitizeLegacyProfileValue(publicProfileRow.name, 'name'),
           displayName: sanitizeLegacyProfileValue(
-            publicProfileRow.display_name || publicProfileRow.username,
+            publicProfileRow.display_name || publicProfileRow.name,
             'displayName',
           ),
           bio: sanitizeLegacyProfileValue(publicProfileRow.bio || '', 'bio'),
@@ -1628,10 +1644,10 @@ export default function BioLinkApp() {
   }, []);
 
   useEffect(() => {
-    if (!PUBLIC_USERNAME || !publicProfile) return;
+    if (!PUBLIC_ROUTE || !publicProfile) return;
 
     document.title =
-      publicProfile.seoTitle || `${publicProfile.displayName || publicProfile.username} - BioLink`;
+      publicProfile.seoTitle || `${publicProfile.displayName || publicProfile.name} - BioLink`;
 
     let descriptionMeta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (!descriptionMeta) {
@@ -1642,7 +1658,7 @@ export default function BioLinkApp() {
     descriptionMeta.content =
       publicProfile.seoDescription ||
       publicProfile.bio ||
-      `${publicProfile.displayName || publicProfile.username} - BioLink`;
+      `${publicProfile.displayName || publicProfile.name} - BioLink`;
 
     let robotsMeta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     if (!robotsMeta) {
@@ -1653,21 +1669,47 @@ export default function BioLinkApp() {
     robotsMeta.content = publicProfile.noIndex ? 'noindex, nofollow' : 'index, follow';
   }, [publicProfile]);
 
+  const ensureAccountUsername = async (uid: string): Promise<string> => {
+    const { data: existingAccount } = await supabase
+      .from('user_accounts')
+      .select('username')
+      .eq('id', uid)
+      .maybeSingle();
+
+    if (existingAccount?.username) {
+      setAccountUsername(existingAccount.username);
+      return existingAccount.username;
+    }
+
+    const fallbackRandom = generateRandomAccountUsername();
+    const { data: insertedAccount, error: insertError } = await supabase
+      .from('user_accounts')
+      .upsert({ id: uid, username: fallbackRandom }, { onConflict: 'id' })
+      .select('username')
+      .maybeSingle();
+
+    const resolvedUsername = (!insertError && insertedAccount?.username) || fallbackRandom;
+    setAccountUsername(resolvedUsername);
+    return resolvedUsername;
+  };
+
   const loadUserProfile = async (
     uid: string,
     email: string,
-    fallbackUsername?: string,
+    fallbackPageName?: string,
     isNewAccount = false,
     accountDisplayName?: string,
     accountImageUrl?: string,
   ) => {
     isHydratingRef.current = true;
     try {
+      await ensureAccountUsername(uid);
+
       const { data: ownedProfiles, error: profilesError } = await supabase
         .from('bio_profiles')
-        .select('id, username, display_name, avatar_url')
+        .select('id, name, display_name, avatar_url')
         .eq('owner_id', uid)
-        .order('username', { ascending: true });
+        .order('name', { ascending: true });
 
       if (profilesError) {
         console.error('Gagal memuat daftar profil:', profilesError.message);
@@ -1700,17 +1742,17 @@ export default function BioLinkApp() {
         setAccountName(sanitizeLegacyProfileValue(resolvedAccountName, 'displayName'));
         setAccountAvatar(accountImageUrl || profile.avatar_url || INITIAL_STATE.avatarUrl);
         const loadedDisplayName = sanitizeLegacyProfileValue(
-          profile.display_name || profile.username,
+          profile.display_name || profile.name,
           'displayName',
         );
         const shouldUseAccountName =
-          profile.display_name === profile.username ||
+          profile.display_name === profile.name ||
           ['Untitled Linktree', 'User Baru', 'John Doe'].includes(
             profile.display_name || '',
           );
         setData({
           accountEmail: email,
-          username: sanitizeLegacyProfileValue(profile.username, 'username'),
+          name: sanitizeLegacyProfileValue(profile.name, 'name'),
           displayName: shouldUseAccountName ? resolvedAccountName : loadedDisplayName,
           bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
           avatarUrl: profile.avatar_url || INITIAL_STATE.avatarUrl,
@@ -1734,13 +1776,13 @@ export default function BioLinkApp() {
         });
         setStep(isNewAccount ? 'step-links' : 'dashboard');
       } else {
-        const cleanUsername = (fallbackUsername || email.split('@')[0] || 'user')
+        const cleanPageName = (fallbackPageName || email.split('@')[0] || 'main')
           .toLowerCase()
-          .replace(/[^a-z0-9._]/g, '');
+          .replace(/[^a-z0-9._-]/g, '');
         const newProfile: BioPageState = {
           ...INITIAL_STATE,
           accountEmail: email,
-          username: cleanUsername || `user${Date.now().toString().slice(-4)}`,
+          name: cleanPageName || 'main',
           displayName: accountDisplayName?.trim() || getNameFromEmail(email),
           links: [],
         };
@@ -1748,7 +1790,7 @@ export default function BioLinkApp() {
         const { error: insertError } = await supabase.from('bio_profiles').insert({
           id: uid,
           owner_id: uid,
-          username: newProfile.username,
+          name: newProfile.name,
           display_name: newProfile.displayName,
           bio: newProfile.bio,
           avatar_url: newProfile.avatarUrl,
@@ -1788,7 +1830,7 @@ export default function BioLinkApp() {
         window.localStorage.setItem('biolink-active-profile-id', uid);
         setProfiles([{
           id: uid,
-          username: newProfile.username,
+          name: newProfile.name,
           display_name: newProfile.displayName,
           avatar_url: newProfile.avatarUrl,
         }]);
@@ -1827,12 +1869,11 @@ export default function BioLinkApp() {
 
     setActiveProfileId(profileId);
     window.localStorage.setItem('biolink-active-profile-id', profileId);
-    window.localStorage.setItem('biolink-active-profile-id', profileId);
     setData({
       accountEmail: data.accountEmail,
-      username: sanitizeLegacyProfileValue(profile.username, 'username'),
+      name: sanitizeLegacyProfileValue(profile.name, 'name'),
       displayName: sanitizeLegacyProfileValue(
-        profile.display_name || profile.username,
+        profile.display_name || profile.name,
         'displayName',
       ),
       bio: sanitizeLegacyProfileValue(profile.bio || '', 'bio'),
@@ -1869,9 +1910,9 @@ export default function BioLinkApp() {
 
     const { data: ownedProfiles, error } = await supabase
       .from('bio_profiles')
-      .select('id, username, display_name, avatar_url')
+      .select('id, name, display_name, avatar_url')
       .eq('owner_id', userId)
-      .order('username', { ascending: true });
+      .order('name', { ascending: true });
 
     if (error) {
       console.error('Gagal memperbarui daftar BioLink:', error.message);
@@ -1882,22 +1923,42 @@ export default function BioLinkApp() {
     setProfiles((ownedProfiles || []) as ProfileSummary[]);
   };
 
-  const createProfile = async () => {
+  const openCreateProfileQuickSetup = () => {
     if (!userId) {
       showToast('Anda harus masuk terlebih dahulu');
       return;
     }
-    if (isCreatingProfile) return;
+    setNewProfileNameInput('');
+    setShowProfileMenu(false);
+    setShowAccountMenu(false);
+    setShowCreateProfileModal(true);
+  };
+
+  const handleConfirmCreateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || isCreatingProfile) return;
+
+    const cleanTitle = newProfileNameInput.trim();
+    if (!cleanTitle) {
+      showToast('Nama BioLink tidak boleh kosong');
+      return;
+    }
+
+    const cleanSlug =
+      cleanTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') ||
+      `page-${crypto.randomUUID().slice(0, 6).toLowerCase()}`;
 
     setIsCreatingProfile(true);
     try {
       const profileId = crypto.randomUUID();
-      const username = `biolink-${crypto.randomUUID().slice(0, 8).toLowerCase()}`;
       const newProfile: BioPageState = {
         ...INITIAL_STATE,
         accountEmail: data.accountEmail,
-        username,
-        displayName: '',
+        name: cleanSlug,
+        displayName: cleanTitle,
         bio: '',
         links: [],
       };
@@ -1905,7 +1966,7 @@ export default function BioLinkApp() {
       const { error } = await supabase.from('bio_profiles').insert({
         id: profileId,
         owner_id: userId,
-        username: newProfile.username,
+        name: newProfile.name,
         display_name: newProfile.displayName,
         bio: newProfile.bio,
         avatar_url: newProfile.avatarUrl,
@@ -1937,7 +1998,7 @@ export default function BioLinkApp() {
         ...prev,
         {
           id: profileId,
-          username,
+          name: cleanSlug,
           display_name: newProfile.displayName,
           avatar_url: newProfile.avatarUrl,
         },
@@ -1946,12 +2007,11 @@ export default function BioLinkApp() {
       setActiveProfileId(profileId);
       window.localStorage.setItem('biolink-active-profile-id', profileId);
       setData(newProfile);
-      setShowProfileMenu(false);
-      setShowAccountMenu(false);
+      setShowCreateProfileModal(false);
       setDashboardView('editor');
       setDashboardSection('overview');
-      setStep('dashboard');
-      showToast('BioLink baru berhasil dibuat');
+      setStep('step-links');
+      showToast(`Mulai Quick Setup untuk "${cleanTitle}"`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
       console.error('Gagal membuat BioLink:', error);
@@ -1973,12 +2033,12 @@ export default function BioLinkApp() {
     }
 
     const profileToDelete = profiles.find((profile) => profile.id === profileId);
-    const profileName =
+    const profileTitle =
       profileToDelete?.display_name?.trim() ||
-      profileToDelete?.username ||
+      profileToDelete?.name ||
       'BioLink ini';
 
-    if (!window.confirm(`Hapus "${profileName}"? Tindakan ini tidak dapat dibatalkan.`)) {
+    if (!window.confirm(`Hapus "${profileTitle}"? Tindakan ini tidak dapat dibatalkan.`)) {
       return;
     }
 
@@ -2028,7 +2088,11 @@ export default function BioLinkApp() {
           await loadUserProfile(
             session.user.id,
             session.user.email || '',
-            typeof metadata.username === 'string' ? metadata.username : undefined,
+            typeof metadata.page_name === 'string'
+              ? metadata.page_name
+              : typeof metadata.username === 'string'
+                ? metadata.username
+                : undefined,
             false,
             metadata.full_name || metadata.name || metadata.display_name,
             metadata.avatar_url || metadata.picture,
@@ -2047,6 +2111,7 @@ export default function BioLinkApp() {
       if (event === 'SIGNED_OUT' && mounted) {
         setUserId(null);
         setAuthProvider('email');
+        setAccountUsername(generateRandomAccountUsername());
         setData(INITIAL_STATE);
         setAccountName('John Doe');
         setAccountAvatar(INITIAL_STATE.avatarUrl);
@@ -2073,13 +2138,26 @@ export default function BioLinkApp() {
       return false;
     }
 
+    const cleanPageName = profileData.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '');
+
+    if (!cleanPageName) {
+      setSyncStatus('error');
+      const message = 'Name BioLink tidak boleh kosong.';
+      setSyncError(message);
+      showToast(message);
+      return false;
+    }
+
     setSyncStatus('saving');
     setSyncError(null);
     try {
       const { data: savedProfile, error } = await supabase
         .from('bio_profiles')
         .update({
-          username: profileData.username,
+          name: cleanPageName,
           display_name: profileData.displayName,
           bio: profileData.bio,
           avatar_url: profileData.avatarUrl,
@@ -2104,7 +2182,7 @@ export default function BioLinkApp() {
         })
         .eq('id', activeProfileId)
         .eq('owner_id', userId)
-        .select('id')
+        .select('id, name')
         .maybeSingle();
 
       if (error) throw error;
@@ -2118,7 +2196,7 @@ export default function BioLinkApp() {
           profile.id === activeProfileId
             ? {
                 ...profile,
-                username: profileData.username,
+                name: savedProfile.name,
                 display_name: profileData.displayName,
                 avatar_url: profileData.avatarUrl,
               }
@@ -2154,7 +2232,6 @@ export default function BioLinkApp() {
     return () => clearTimeout(timeout);
   }, [saveProfileToCloud, step, userId, activeProfileId]);
 
-  // Automatic transition timer for Step 5 ("Looking good. Let's keep building...")
   useEffect(() => {
     if (step === 'transition') {
       const timer = setTimeout(() => {
@@ -2202,7 +2279,7 @@ export default function BioLinkApp() {
   };
 
   const handleCopyShareUrl = async () => {
-    const shareLink = getPublicProfileUrl(data.username || 'john-doe');
+    const shareLink = getPublicProfileUrl(accountUsername, data.name || 'main');
     if (!(await copyTextToClipboard(shareLink, 'Link BioLink'))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -2254,7 +2331,7 @@ export default function BioLinkApp() {
         const pngUrl = URL.createObjectURL(pngBlob);
         const anchor = document.createElement('a');
         anchor.href = pngUrl;
-        anchor.download = `${data.username || 'BioLink'}-business-card-qr.png`;
+        anchor.download = `${accountUsername}-${data.name || 'biolink'}-qr.png`;
         anchor.click();
         URL.revokeObjectURL(pngUrl);
         showToast('QR code berhasil diunduh');
@@ -2276,7 +2353,7 @@ export default function BioLinkApp() {
       `ORG:${data.displayName}`,
       contactPhone ? `TEL;TYPE=CELL:${contactPhone}` : '',
       contactEmail ? `EMAIL:${contactEmail}` : '',
-      `URL:${getPublicProfileUrl(data.username)}`,
+      `URL:${getPublicProfileUrl(accountUsername, data.name)}`,
       'END:VCARD',
     ]
       .filter(Boolean)
@@ -2285,14 +2362,14 @@ export default function BioLinkApp() {
     const url = URL.createObjectURL(new Blob([vCard], { type: 'text/vcard;charset=utf-8' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${data.username || 'contact'}.vcf`;
+    anchor.download = `${accountUsername}-${data.name || 'contact'}.vcf`;
     anchor.click();
     URL.revokeObjectURL(url);
     showToast('Contact card berhasil diunduh');
   };
 
   const handleShareBusinessCard = async () => {
-    const url = getPublicProfileUrl(data.username);
+    const url = getPublicProfileUrl(accountUsername, data.name);
     const title = businessCardName || data.displayName;
 
     if (navigator.share) {
@@ -2382,7 +2459,7 @@ export default function BioLinkApp() {
     reader.readAsDataURL(file);
   };
 
-  // --- STEP 0: LOGIN & REGISTER LOKAL ---
+  // --- STEP 0: LOGIN & REGISTER ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -2391,27 +2468,14 @@ export default function BioLinkApp() {
 
     try {
       if (authMode === 'register') {
-        const cleanUser = loginUsername.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
+        const cleanPageName = loginPageName.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
         const cleanEmail = loginEmail.trim().toLowerCase();
-        if (!cleanUser) {
-          setAuthError('Username wajib diisi (huruf kecil, angka, titik, atau underscore).');
+        if (!cleanPageName) {
+          setAuthError('Name halaman BioLink wajib diisi (huruf kecil, angka, titik, underscore, atau tanda hubung).');
           return;
         }
         if (!cleanEmail || loginPassword.length < 6) {
           setAuthError('Email dan kata sandi minimal 6 karakter wajib diisi.');
-          return;
-        }
-
-        const { data: usernameAvailable, error: availabilityError } = await supabase.rpc(
-          'check_username_available',
-          { p_username: cleanUser },
-        );
-        if (availabilityError) {
-          setAuthError(`Gagal memeriksa username: ${availabilityError.message}`);
-          return;
-        }
-        if (!usernameAvailable) {
-          setAuthError('Username sudah digunakan.');
           return;
         }
 
@@ -2422,7 +2486,7 @@ export default function BioLinkApp() {
           options: {
             emailRedirectTo: APP_URL,
             data: {
-              username: cleanUser,
+              page_name: cleanPageName,
               display_name: displayName,
             },
           },
@@ -2438,7 +2502,7 @@ export default function BioLinkApp() {
           await loadUserProfile(
             signUpData.user.id,
             cleanEmail,
-            cleanUser,
+            cleanPageName,
             true,
             displayName,
           );
@@ -2471,7 +2535,11 @@ export default function BioLinkApp() {
         await loadUserProfile(
           user.id,
           user.email || cleanEmail,
-          typeof metadata.username === 'string' ? metadata.username : undefined,
+          typeof metadata.page_name === 'string'
+            ? metadata.page_name
+            : typeof metadata.username === 'string'
+              ? metadata.username
+              : undefined,
           false,
           metadata.full_name || metadata.name || metadata.display_name,
           metadata.avatar_url || metadata.picture,
@@ -2517,6 +2585,7 @@ export default function BioLinkApp() {
     window.localStorage.removeItem('biolink-active-profile-id');
     setUserId(null);
     setAuthProvider('email');
+    setAccountUsername(generateRandomAccountUsername());
     setActiveProfileId(null);
     setProfiles([]);
     setData(INITIAL_STATE);
@@ -2526,28 +2595,31 @@ export default function BioLinkApp() {
     showToast('Berhasil keluar dari akun');
   };
 
-  const handleSaveSettings = async () => {
-    setIsSavingUsername(true);
+  const handleSaveAccountUsername = async () => {
+    setIsSavingAccountUsername(true);
     try {
-      const username = usernameDraft.trim().toLowerCase();
-      if (!username) {
-        showToast('Username tidak boleh kosong');
+      const cleanUsername = accountUsernameDraft.trim().toLowerCase();
+      if (!cleanUsername) {
+        showToast('Username akun tidak boleh kosong');
         return;
       }
-      if (!/^[a-z0-9-]{1,30}$/.test(username)) {
-        showToast('Username hanya boleh berisi huruf kecil, angka, dan tanda hubung (maksimal 30 karakter).');
+      if (!/^[a-z0-9._-]{3,30}$/.test(cleanUsername)) {
+        showToast('Username hanya boleh huruf kecil, angka, titik, underscore, atau tanda hubung (3–30 karakter).');
         return;
       }
-      if (!userId || !activeProfileId) {
-        showToast('Tidak ada profil aktif untuk diperbarui.');
+      if (!userId) {
+        showToast('Anda harus masuk terlebih dahulu.');
         return;
       }
 
-      const { data: usernameAvailable, error: availabilityError } = await supabase.rpc(
-        'check_username_available',
-        {
-          p_username: username,
-        },
+      if (cleanUsername === accountUsername.trim().toLowerCase()) {
+        showToast('Username akun sudah sesuai');
+        return;
+      }
+
+      const { data: available, error: availabilityError } = await supabase.rpc(
+        'check_account_username_available',
+        { p_username: cleanUsername },
       );
 
       if (availabilityError) {
@@ -2555,67 +2627,30 @@ export default function BioLinkApp() {
         return;
       }
 
-      const { data: ownProfile, error: profileError } = await supabase
-        .from('bio_profiles')
+      if (available !== true) {
+        showToast('Username akun sudah digunakan pengguna lain');
+        return;
+      }
+
+      const { data: updatedAccount, error: updateError } = await supabase
+        .from('user_accounts')
+        .upsert({ id: userId, username: cleanUsername }, { onConflict: 'id' })
         .select('username')
-        .eq('id', activeProfileId)
-        .eq('owner_id', userId)
-        .maybeSingle();
-
-      if (profileError) {
-        showToast(`Gagal memeriksa profil: ${profileError.message}`);
-        return;
-      }
-      if (!ownProfile) {
-        showToast('Profil tidak ditemukan atau Anda tidak memiliki akses.');
-        return;
-      }
-
-      const isCurrentUsername = ownProfile.username.trim().toLowerCase() === username;
-      if (usernameAvailable !== true && !isCurrentUsername) {
-        if (usernameAvailable === false) {
-          showToast('Username sudah digunakan');
-        } else {
-          showToast('Tidak dapat memastikan username tersedia. Coba lagi.');
-        }
-        return;
-      }
-
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('bio_profiles')
-        .update({
-          username,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', activeProfileId)
-        .eq('owner_id', userId)
-        .select('id, username')
         .maybeSingle();
 
       if (updateError) {
-        showToast(`Gagal menyimpan username: ${updateError.message}`);
-        return;
-      }
-      if (!updatedProfile) {
-        showToast('Profil tidak ditemukan atau Anda tidak memiliki akses.');
+        showToast(`Gagal menyimpan username akun: ${updateError.message}`);
         return;
       }
 
-      setData((prev) => ({ ...prev, username: updatedProfile.username }));
-      setProfiles((prev) =>
-        prev.map((profile) =>
-          profile.id === updatedProfile.id
-            ? { ...profile, username: updatedProfile.username }
-            : profile,
-        ),
-      );
-      showToast('Username berhasil disimpan');
+      setAccountUsername(updatedAccount?.username || cleanUsername);
+      showToast('Username akun berhasil disimpan');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
-      console.error('Gagal menyimpan username:', error);
-      showToast(`Gagal menyimpan username: ${message}`);
+      console.error('Gagal menyimpan username akun:', error);
+      showToast(`Gagal menyimpan username akun: ${message}`);
     } finally {
-      setIsSavingUsername(false);
+      setIsSavingAccountUsername(false);
     }
   };
 
@@ -2659,6 +2694,7 @@ export default function BioLinkApp() {
     window.localStorage.removeItem('biolink-active-profile-id');
     setUserId(null);
     setAuthProvider('email');
+    setAccountUsername(generateRandomAccountUsername());
     setActiveProfileId(null);
     setProfiles([]);
     setData(INITIAL_STATE);
@@ -2884,9 +2920,9 @@ export default function BioLinkApp() {
   );
 
   // ============================================================================
-  // RENDER 0A: PUBLIC BIO PAGE (/username)
+  // RENDER 0A: PUBLIC BIO PAGE (/:username/:name)
   // ============================================================================
-  if (PUBLIC_USERNAME) {
+  if (PUBLIC_ROUTE) {
     if (publicProfileLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-white">
@@ -2916,9 +2952,11 @@ export default function BioLinkApp() {
         >
           <LivePhoneMockup
             data={publicProfile}
+            accountUsername={PUBLIC_ROUTE.accountUsername}
             onLinkClick={(id) => {
               void supabase.rpc('increment_profile_link_click', {
-                p_username: PUBLIC_USERNAME,
+                p_account_username: PUBLIC_ROUTE.accountUsername,
+                p_page_name: PUBLIC_ROUTE.pageName,
                 p_link_id: id,
               });
             }}
@@ -2927,7 +2965,7 @@ export default function BioLinkApp() {
           <section className="mt-6 w-full max-w-[390px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-900">Dapatkan update</h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Daftar untuk menerima kabar terbaru dari {publicProfile.displayName || publicProfile.username}.
+              Daftar untuk menerima kabar terbaru dari {publicProfile.displayName || publicProfile.name}.
             </p>
             <form onSubmit={handleAudienceSubscription} className="mt-4 space-y-3">
               <input
@@ -3045,7 +3083,7 @@ export default function BioLinkApp() {
   }
 
   // ============================================================================
-  // RENDER 1: HALAMAN LOGIN & REGISTER AKUN (SUPABASE AUTH + GOOGLE OAUTH)
+  // RENDER 1: HALAMAN LOGIN & REGISTER AKUN
   // ============================================================================
   if (step === 'login') {
     return (
@@ -3053,7 +3091,7 @@ export default function BioLinkApp() {
         mode={authMode}
         email={loginEmail}
         password={loginPassword}
-        username={loginUsername}
+        username={loginPageName}
         error={authError}
         notice={authNotice}
         submitting={authSubmitting}
@@ -3064,7 +3102,7 @@ export default function BioLinkApp() {
         }}
         onEmailChange={setLoginEmail}
         onPasswordChange={setLoginPassword}
-        onUsernameChange={setLoginUsername}
+        onUsernameChange={setLoginPageName}
         onSubmit={handleLoginSubmit}
         onGoogleLogin={handleGoogleLogin}
       />
@@ -3087,7 +3125,6 @@ export default function BioLinkApp() {
             <ArrowLeft className="w-4 h-4" />
           </button>
 
-          {/* Progress Bar 33% */}
           <div className="w-48 sm:w-64 h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div className="w-1/3 h-full bg-sky-500 rounded-full transition-all duration-300" />
           </div>
@@ -3106,7 +3143,6 @@ export default function BioLinkApp() {
               </p>
             </div>
 
-            {/* Quick Social Media Handles */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
               <span className="text-xs font-semibold text-slate-700 block">
                 Ikon Sosial Media Cepat
@@ -3164,7 +3200,6 @@ export default function BioLinkApp() {
               </div>
             </div>
 
-            {/* Form Add Custom Link */}
             <form
               onSubmit={handleOnboardingAddLink}
               className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3"
@@ -3198,7 +3233,6 @@ export default function BioLinkApp() {
               </div>
             </form>
 
-            {/* Added Links List */}
             <div className="space-y-2">
               {data.links.map((item) => (
                 <div
@@ -3243,7 +3277,7 @@ export default function BioLinkApp() {
   }
 
   // ============================================================================
-  // RENDER 3: LANGKAH 2 ONBOARDING - ATUR PROFILE & BANNER ("Add profile details")
+  // RENDER 3: LANGKAH 2 ONBOARDING - ATUR PROFILE & BANNER
   // ============================================================================
   if (step === 'step-profile') {
     return (
@@ -3263,7 +3297,6 @@ export default function BioLinkApp() {
             <ArrowLeft className="w-4 h-4" />
           </button>
 
-          {/* Progress Bar 66% */}
           <div className="w-48 sm:w-64 h-1.5 bg-slate-200 rounded-full overflow-hidden">
             <div className="w-2/3 h-full bg-sky-500 rounded-full transition-all duration-300" />
           </div>
@@ -3272,7 +3305,7 @@ export default function BioLinkApp() {
         </header>
 
         <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-1">
-          <LivePhoneMockup data={data} compact skeletonMode />
+          <LivePhoneMockup data={data} accountUsername={accountUsername} compact skeletonMode />
         </div>
 
         <div className="shrink-0 bg-white border-t border-slate-200 rounded-t-[32px] shadow-[0_-8px_30px_rgba(15,23,42,0.06)] px-6 pt-4 pb-4">
@@ -3418,7 +3451,7 @@ export default function BioLinkApp() {
   }
 
   // ============================================================================
-  // RENDER 4: LANGKAH 3 ONBOARDING - PERSONALISASI WARNA ("Let's apply some color")
+  // RENDER 4: LANGKAH 3 ONBOARDING - PERSONALISASI WARNA
   // ============================================================================
   if (step === 'step-color') {
     return (
@@ -3438,7 +3471,6 @@ export default function BioLinkApp() {
             <ArrowLeft className="w-4 h-4" />
           </button>
 
-          {/* Progress Bar 100% */}
           <div className="w-48 sm:w-64 h-1.5 bg-slate-200 rounded-full overflow-hidden">
             <div className="w-full h-full bg-sky-500 rounded-full transition-all duration-300" />
           </div>
@@ -3447,7 +3479,7 @@ export default function BioLinkApp() {
         </header>
 
         <div className="flex-1 min-h-0 flex items-center justify-center px-4 py-1">
-          <LivePhoneMockup data={data} compact skeletonMode />
+          <LivePhoneMockup data={data} accountUsername={accountUsername} compact skeletonMode />
         </div>
 
         <div className="shrink-0 bg-white border-t border-slate-200 rounded-t-[32px] shadow-[0_-8px_30px_rgba(15,23,42,0.06)] px-6 pt-4 pb-4">
@@ -3580,7 +3612,7 @@ export default function BioLinkApp() {
   }
 
   // ============================================================================
-  // RENDER 5: TRANSISI "Looking good. Let's keep building..."
+  // RENDER 5: TRANSISI
   // ============================================================================
   if (step === 'transition') {
     const lightCanvas = isColorLight(data.wallpaperColor);
@@ -3602,11 +3634,91 @@ export default function BioLinkApp() {
         </div>
 
         <div className="my-auto py-4">
-          <LivePhoneMockup data={data} compact skeletonMode tilted3D />
+          <LivePhoneMockup data={data} accountUsername={accountUsername} compact skeletonMode tilted3D />
         </div>
       </div>
     );
   }
+
+  // MODAL: QUICK SETUP BUAT BIOLINK BARU
+  const createProfileModalElement = showCreateProfileModal && (
+    <div
+      onClick={() => !isCreatingProfile && setShowCreateProfileModal(false)}
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-xl space-y-5"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Buat BioLink Baru</h3>
+          </div>
+          <button
+            type="button"
+            disabled={isCreatingProfile}
+            onClick={() => setShowCreateProfileModal(false)}
+            className="p-1.5 rounded-full text-slate-400 hover:bg-slate-100 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleConfirmCreateProfile} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Nama BioLink / Brand
+            </label>
+            <input
+              type="text"
+              required
+              autoFocus
+              maxLength={30}
+              value={newProfileNameInput}
+              onChange={(e) => setNewProfileNameInput(e.target.value)}
+              placeholder="Contoh: Dafayu Sock Cute atau Portfolio"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+            />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              URL publik:{' '}
+              <span className="font-mono text-slate-600">
+                {APP_URL.replace(/^https?:\/\//, '')}/{accountUsername}/
+                {newProfileNameInput
+                  .trim()
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-|-$/g, '') || 'nama-halaman'}
+              </span>
+            </p>
+          </div>
+
+          <div className="flex gap-2.5 pt-1">
+            <button
+              type="button"
+              disabled={isCreatingProfile}
+              onClick={() => setShowCreateProfileModal(false)}
+              className="flex-1 py-3 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isCreatingProfile || !newProfileNameInput.trim()}
+              className="flex-1 py-3 rounded-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {isCreatingProfile ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memproses...
+                </>
+              ) : (
+                'Mulai Quick Setup'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 
   // ============================================================================
   // RENDER 6: DASHBOARD UTAMA
@@ -3617,7 +3729,7 @@ export default function BioLinkApp() {
     const setupSteps = [
       Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL),
       isCustomTitle(data.displayName),
-      Boolean(data.username.trim()),
+      Boolean(accountUsername.trim()),
       isCustomBio(data.bio),
       actualLinks.length > 0,
       Object.values(data.socials).some(Boolean),
@@ -3647,7 +3759,31 @@ export default function BioLinkApp() {
 
     return (
       <div className="min-h-screen bg-[#f7f7f8] text-slate-950">
+        {toastMessage && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{ borderColor: data.buttonColor }}
+            className="fixed right-4 top-16 z-50 w-[calc(100%-2rem)] max-w-sm rounded-xl border-2 bg-white px-4 py-3 pr-11 text-sm font-medium text-slate-800 shadow-lg"
+          >
+            {toastMessage}
+            <button
+              type="button"
+              aria-label="Tutup notifikasi"
+              onClick={() => {
+                if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+                toastTimeoutRef.current = null;
+                setToastMessage(null);
+              }}
+              className="absolute right-2 top-2 grid size-7 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
+
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-[238px] flex-col border-r border-slate-200/80 bg-white lg:flex">
+          {/* HEADER KIRI ATAS: USERNAME PENGGUNA DI ATAS EMAIL */}
           <div className="flex h-[72px] items-center px-5">
             <div className="relative">
               <button
@@ -3662,7 +3798,7 @@ export default function BioLinkApp() {
                 />
                 <div className="min-w-0 w-[120px]">
                   <p className="truncate text-xs font-bold text-slate-900">
-                    {data.username || accountName}
+                    {accountUsername}
                   </p>
                   <p className="truncate text-[10px] text-slate-400">{data.accountEmail}</p>
                 </div>
@@ -3675,7 +3811,7 @@ export default function BioLinkApp() {
                 >
                   <button
                     type="button"
-                    onClick={() => void createProfile()}
+                    onClick={openCreateProfileQuickSetup}
                     disabled={isCreatingProfile}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-violet-700 hover:bg-violet-50 disabled:cursor-wait disabled:opacity-60"
                   >
@@ -3876,7 +4012,7 @@ export default function BioLinkApp() {
                       {[
                         ['Profile photo', Boolean(data.avatarUrl && data.avatarUrl !== DEFAULT_AVATAR_URL), 'header'],
                         ['Display name', isCustomTitle(data.displayName), 'header'],
-                        ['Username', Boolean(data.username), 'header'],
+                        ['Account Username', Boolean(accountUsername), 'settings'],
                         ['Short bio', isCustomBio(data.bio), 'header'],
                         ['Add at least one link', actualLinks.length > 0, 'content'],
                         ['Add a social channel', Object.values(data.socials).some(Boolean), 'header'],
@@ -3885,7 +4021,7 @@ export default function BioLinkApp() {
                           key={String(label)}
                           type="button"
                           onClick={() => {
-                            if (label === 'Username') {
+                            if (tab === 'settings') {
                               setDashboardSection('settings');
                               return;
                             }
@@ -3914,6 +4050,44 @@ export default function BioLinkApp() {
                   <div className="space-y-4">
                     <Card className="rounded-[18px] border-slate-200 shadow-none">
                       <CardHeader className="px-5 py-4">
+                        <CardTitle className="text-sm">Username Akun</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3 px-5 pb-5">
+                        <p className="text-xs text-slate-500">
+                          Username ini digunakan pada awal URL semua halaman BioLink Anda:{' '}
+                          <span className="font-mono text-slate-800">
+                            {APP_URL.replace(/^https?:\/\//, '')}/{accountUsername || 'username'}/{data.name || 'name'}
+                          </span>
+                        </p>
+                        <div className="flex rounded-xl border border-slate-200">
+                          <span className="px-3 py-2.5 text-sm text-slate-400">
+                            {APP_URL.replace(/^https?:\/\//, '')}/
+                          </span>
+                          <input
+                            value={accountUsernameDraft}
+                            maxLength={30}
+                            onChange={(e) =>
+                              setAccountUsernameDraft(
+                                e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''),
+                              )
+                            }
+                            disabled={isSavingAccountUsername}
+                            className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleSaveAccountUsername}
+                          disabled={isSavingAccountUsername}
+                          className="rounded-full bg-violet-600 hover:bg-violet-700"
+                        >
+                          {isSavingAccountUsername ? 'Menyimpan...' : 'Simpan Username'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="rounded-[18px] border-slate-200 shadow-none">
+                      <CardHeader className="px-5 py-4">
                         <CardTitle className="text-sm">Tema</CardTitle>
                       </CardHeader>
                       <CardContent className="px-5 pb-5">
@@ -3938,36 +4112,6 @@ export default function BioLinkApp() {
                             <Palette className="size-4" /> Atur Tema
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="rounded-[18px] border-slate-200 shadow-none">
-                      <CardHeader className="px-5 py-4">
-                        <CardTitle className="text-sm">Username</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3 px-5 pb-5">
-                        <div className="flex rounded-xl border border-slate-200">
-                          <span className="px-3 py-2.5 text-sm text-slate-400">biolink.id/</span>
-                          <input
-                            value={usernameDraft}
-                            maxLength={30}
-                            onChange={(e) =>
-                              setUsernameDraft(
-                                e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-                              )
-                            }
-                            disabled={isSavingUsername}
-                            className="min-w-0 flex-1 rounded-r-xl px-1 py-2.5 text-sm outline-none"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          onClick={handleSaveSettings}
-                          disabled={isSavingUsername}
-                          className="rounded-full bg-violet-600 hover:bg-violet-700"
-                        >
-                          {isSavingUsername ? 'Menyimpan...' : 'Simpan Username'}
-                        </Button>
                       </CardContent>
                     </Card>
 
@@ -4043,7 +4187,7 @@ export default function BioLinkApp() {
                             onChange={(e) =>
                               setData((prev) => ({ ...prev, seoTitle: e.target.value }))
                             }
-                            placeholder={data.displayName || data.username}
+                            placeholder={data.displayName || data.name}
                             maxLength={60}
                             className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
                           />
@@ -4103,10 +4247,10 @@ export default function BioLinkApp() {
                       <CardContent className="px-5 pb-5">
                         <div className="rounded-xl border border-slate-200 p-4">
                           <p className="text-[12px] text-emerald-700">
-                            {getPublicProfileUrl(data.username)}
+                            {getPublicProfileUrl(accountUsername, data.name)}
                           </p>
                           <p className="mt-1 text-lg font-medium text-sky-700">
-                            {data.seoTitle || data.displayName || data.username}
+                            {data.seoTitle || data.displayName || data.name}
                           </p>
                           <p className="mt-1 text-xs leading-5 text-slate-600">
                             {data.seoDescription || data.bio || 'Deskripsi halaman Biolink Anda.'}
@@ -4209,7 +4353,7 @@ export default function BioLinkApp() {
                               );
                               const anchor = document.createElement('a');
                               anchor.href = url;
-                              anchor.download = `${data.username || 'biolink'}-audience.csv`;
+                              anchor.download = `${accountUsername}-${data.name || 'biolink'}-audience.csv`;
                               anchor.click();
                               URL.revokeObjectURL(url);
                               setAudienceFeedback('Daftar audience berhasil diekspor.');
@@ -4537,10 +4681,10 @@ export default function BioLinkApp() {
                             URL
                           </div>
                           <p className="mt-1 truncate text-[11px] font-semibold text-slate-700">
-                            {getPublicProfileUrl(data.username).replace(/^https?:\/\//, '')}
+                            {getPublicProfileUrl(accountUsername, data.name).replace(/^https?:\/\//, '')}
                           </p>
                           <a
-                            href={getPublicProfileUrl(data.username)}
+                            href={getPublicProfileUrl(accountUsername, data.name)}
                             target="_blank"
                             rel="noopener noreferrer"
                             title="Open public BioLink"
@@ -4551,7 +4695,7 @@ export default function BioLinkApp() {
                               className="mx-auto flex h-[118px] w-[118px] items-center justify-center rounded bg-white"
                             >
                               <QRCodeSVG
-                                value={getPublicProfileUrl(data.username)}
+                                value={getPublicProfileUrl(accountUsername, data.name)}
                                 size={118}
                                 level="M"
                                 bgColor="#FFFFFF"
@@ -4635,7 +4779,7 @@ export default function BioLinkApp() {
                               variant="outline"
                               onClick={() =>
                                 window.open(
-                                  getPublicProfileUrl(data.username),
+                                  getPublicProfileUrl(accountUsername, data.name),
                                   '_blank',
                                   'noopener,noreferrer'
                                 )
@@ -4821,7 +4965,7 @@ export default function BioLinkApp() {
                       <div className="flex gap-2">
                         <input
                           readOnly
-                          value={getPublicProfileUrl(data.username)}
+                          value={getPublicProfileUrl(accountUsername, data.name)}
                           className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
                         />
                         <Button type="button" onClick={handleCopyShareUrl} className="rounded-full">
@@ -4836,7 +4980,7 @@ export default function BioLinkApp() {
               <>
                 <div className="mb-8 flex items-center justify-between">
                   <h1 className="text-[23px] font-bold tracking-tight">
-                    Good morning, {data.displayName}
+                    Good morning, {accountName || accountUsername}
                   </h1>
                   <div className="flex items-center gap-2">
                     <button
@@ -4844,7 +4988,7 @@ export default function BioLinkApp() {
                       onClick={() => setDashboardView('editor')}
                       className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white sm:flex"
                     >
-                      BioLink/{data.username}
+                      {APP_URL.replace(/^https?:\/\//, '')}/{accountUsername}/{data.name}
                       <Share2 className="size-3.5" />
                     </button>
                   </div>
@@ -4855,8 +4999,8 @@ export default function BioLinkApp() {
                   <div className="flex flex-wrap items-center gap-4">
                     {profiles.map((profile) => {
                       const isActive = profile.id === activeProfileId;
-                      const profileName =
-                        profile.display_name?.trim() || profile.username || 'Untitled BioLink';
+                      const profileTitle =
+                        profile.display_name?.trim() || profile.name || 'Untitled BioLink';
 
                       return (
                         <Card
@@ -4886,25 +5030,23 @@ export default function BioLinkApp() {
                               }}
                             >
                               <div className="absolute inset-x-0 bottom-3 px-3">
-                                <p className="truncate text-[14px] font-bold">{profileName}</p>
-                                <p className="mt-0.5 text-[11px] text-white/75">
-                                  {isActive
-                                    ? `${activeLinks} ${activeLinks === 1 ? 'link' : 'links'}`
-                                    : 'BioLink'}
+                                <p className="truncate text-[14px] font-bold">{profileTitle}</p>
+                                <p className="mt-0.5 truncate text-[11px] text-white/75">
+                                  /{accountUsername}/{profile.name}
                                 </p>
                               </div>
                             </div>
                             </button>
                             <div className="flex h-[50px] items-center justify-between px-3">
                               <span className="min-w-0 truncate text-[13px] font-bold">
-                                {profileName}
+                                {profile.name}
                               </span>
                               <div className="flex shrink-0 items-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => void deleteProfile(profile.id)}
                                   className="grid size-7 place-items-center rounded-full bg-white/15 text-white hover:bg-rose-500 cursor-pointer"
-                                  aria-label={`Hapus ${profileName}`}
+                                  aria-label={`Hapus ${profileTitle}`}
                                   title="Hapus BioLink"
                                 >
                                   <Trash2 className="size-3.5" />
@@ -4929,11 +5071,11 @@ export default function BioLinkApp() {
 
                     <button
                       type="button"
-                      onClick={() => void createProfile()}
+                      onClick={openCreateProfileQuickSetup}
                       disabled={isCreatingProfile}
-                      className="group grid h-[278px] w-[218px] place-items-center rounded-[17px] border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600 disabled:cursor-wait disabled:opacity-60"
-                      aria-label="Tambah BioLink"
-                      title="Tambah BioLink"
+                      className="group grid h-[278px] w-[218px] place-items-center rounded-[17px] border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600 disabled:cursor-wait disabled:opacity-60 cursor-pointer"
+                      aria-label="Tambah BioLink (Quick Setup)"
+                      title="Tambah BioLink (Quick Setup)"
                     >
                       <span className="grid size-12 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 shadow-sm transition-colors group-hover:border-violet-200 group-hover:text-violet-600">
                         {isCreatingProfile ? (
@@ -5052,6 +5194,8 @@ export default function BioLinkApp() {
             )}
           </div>
         </main>
+
+        {createProfileModalElement}
       </div>
     );
   }
@@ -5082,7 +5226,6 @@ export default function BioLinkApp() {
       )}
       {/* TOP BAR */}
       <header className="sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        {/* Left Hamburger / Stats */}
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -5128,11 +5271,11 @@ export default function BioLinkApp() {
           >
             <img
               src={accountAvatar}
-              alt={data.username || accountName}
+              alt={accountUsername}
               className="w-6 h-6 rounded-full object-cover bg-sky-100"
             />
-            <span className="max-w-[160px] sm:max-w-[220px] truncate">
-              {data.username || accountName}
+            <span className="max-w-[160px] sm:max-w-[240px] truncate">
+              {accountUsername} / {data.name}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
@@ -5144,18 +5287,15 @@ export default function BioLinkApp() {
             >
               <div className="px-3 py-2 border-b border-slate-100">
                 <p className="text-xs font-bold text-slate-900 truncate">
-                  {data.username || accountName}
+                  {accountUsername}
                 </p>
                 <p className="text-[11px] text-slate-400 truncate">
-                  {data.accountEmail || `biolink.id/${data.username}`}
+                  {data.accountEmail || `${APP_URL.replace(/^https?:\/\//, '')}/${accountUsername}/${data.name}`}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowAccountMenu(false);
-                  void createProfile();
-                }}
+                onClick={openCreateProfileQuickSetup}
                 disabled={isCreatingProfile}
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-2 cursor-pointer"
               >
@@ -5222,7 +5362,6 @@ export default function BioLinkApp() {
 
       {/* MAIN WORKSPACE */}
       <div className="flex-1 flex flex-col lg:flex-row max-w-[1440px] w-full mx-auto px-3 sm:px-6 pb-8 gap-4 lg:gap-6">
-        {/* LEFT VERTICAL ICON RAIL */}
         <aside
           className={`lg:w-16 flex lg:flex-col items-center justify-center lg:justify-start lg:pt-28 gap-4 ${mobileDashMode === 'preview' ? 'hidden lg:flex' : 'flex'
             }`}
@@ -5290,7 +5429,7 @@ export default function BioLinkApp() {
                 />
                 <div className="min-w-0">
                   <h3 className="font-bold text-base text-slate-900 truncate">
-                    {data.displayName}
+                    {data.displayName || data.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {[
@@ -5512,7 +5651,7 @@ export default function BioLinkApp() {
 
                 {data.links.length === 0 && (
                   <div className="border border-dashed border-slate-300 rounded-2xl p-8 text-center text-xs text-slate-500">
-                    Belum ada link. Klik tombol <strong>+ Add</strong> di atas untuk menambahkan.
+                    Belum ada link. Klik tombol <strong>+ Add Link</strong> di atas untuk menambahkan.
                   </div>
                 )}
               </div>
@@ -5577,6 +5716,38 @@ export default function BioLinkApp() {
                   >
                     Save
                   </button>
+                </div>
+              </div>
+
+              {/* INPUT NAME UNTUK ROUTING /<username>/<name> */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
+                <div className="pt-2.5">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Name (URL Slug)
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Routing halaman ini
+                  </span>
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl px-3.5 focus-within:bg-white focus-within:border-sky-500">
+                    <span className="text-xs text-slate-400 select-none truncate max-w-[170px]">
+                      /{accountUsername}/
+                    </span>
+                    <input
+                      type="text"
+                      maxLength={30}
+                      value={data.name}
+                      onChange={(e) =>
+                        updateDataWithHistory((prev) => ({
+                          ...prev,
+                          name: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''),
+                        }))
+                      }
+                      placeholder="perdafos"
+                      className="min-w-0 flex-1 bg-transparent py-3 pl-0.5 text-sm font-medium text-slate-900 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -6088,9 +6259,17 @@ export default function BioLinkApp() {
                     {
                       name: 'Midnight',
                       wallpaper: '#0F172A',
-                      button: '#FFFFFF',
+                      button: '#38BDF8',
                       buttonText: '#0F172A',
                       titleText: '#FFFFFF',
+                      font: 'Plus Jakarta Sans' as FontChoice,
+                    },
+                    {
+                      name: 'Sand',
+                      wallpaper: '#F5DFC6',
+                      button: '#433A31',
+                      buttonText: '#FFFFFF',
+                      titleText: '#1C1917',
                       font: 'Inter' as FontChoice,
                     },
                     {
@@ -6098,58 +6277,83 @@ export default function BioLinkApp() {
                       wallpaper: '#F5D5EA',
                       button: '#18181B',
                       buttonText: '#FFFFFF',
-                      titleText: '#0F172A',
-                      font: 'Plus Jakarta Sans' as FontChoice,
-                    },
-                    {
-                      name: 'Espresso',
-                      wallpaper: '#433A31',
-                      button: '#F5DFC6',
-                      buttonText: '#433A31',
-                      titleText: '#FFFFFF',
+                      titleText: '#18181B',
                       font: 'DM Sans' as FontChoice,
                     },
-                  ].map((theme) => (
+                  ].map((preset) => (
                     <button
-                      key={theme.name}
+                      key={preset.name}
                       type="button"
                       onClick={() =>
                         updateDataWithHistory((prev) => ({
                           ...prev,
-                          wallpaperColor: theme.wallpaper,
-                          buttonColor: theme.button,
-                          buttonTextColor: theme.buttonText,
-                          titleColor: theme.titleText,
-                          fontFamily: theme.font,
+                          wallpaperColor: preset.wallpaper,
+                          buttonColor: preset.button,
+                          buttonTextColor: preset.buttonText,
+                          titleColor: preset.titleText,
+                          fontFamily: preset.font,
                         }))
                       }
-                      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-sky-300"
+                      className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left hover:border-sky-400"
                     >
                       <span
-                        className="h-14 w-20 rounded-xl border border-slate-200"
-                        style={{ backgroundColor: theme.wallpaper }}
-                      />
+                        className="flex h-16 w-12 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 p-2"
+                        style={{ backgroundColor: preset.wallpaper }}
+                      >
+                        <span
+                          className="h-2 w-full rounded-full"
+                          style={{ backgroundColor: preset.button }}
+                        />
+                        <span
+                          className="h-2 w-full rounded-full"
+                          style={{ backgroundColor: preset.button }}
+                        />
+                      </span>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800">{theme.name}</p>
-                        <p className="mt-1 text-[11px] text-slate-400">{theme.font}</p>
+                        <p className="text-sm font-bold">{preset.name}</p>
+                        <p className="text-xs text-slate-500">{preset.font}</p>
                       </div>
-                      <ChevronRight className="size-4 text-slate-400" />
                     </button>
                   ))}
                 </div>
               )}
 
               {designPanel === 'wallpaper' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">Fill</p>
-                      <p className="mt-1 text-xs text-slate-400">Warna latar halaman</p>
-                    </div>
-                    <label
-                      className="size-10 cursor-pointer rounded-full border-2 border-white shadow ring-1 ring-slate-200"
-                      style={{ backgroundColor: data.wallpaperColor }}
-                    >
+                <div>
+                  <span className="text-xs font-semibold text-slate-700 block mb-3">
+                    Wallpaper Color (Solid Fill)
+                  </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {WALLPAPER_SWATCHES.map((swatch) => {
+                      const active = data.wallpaperColor.toUpperCase() === swatch.hex;
+                      return (
+                        <button
+                          key={swatch.hex}
+                          type="button"
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({
+                              ...prev,
+                              wallpaperColor: swatch.hex,
+                            }))
+                          }
+                          style={{ backgroundColor: swatch.hex }}
+                          title={swatch.name}
+                          className={`w-10 h-10 rounded-full border transition-transform flex items-center justify-center cursor-pointer ${active
+                            ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
+                            : 'border-slate-300 hover:scale-105'
+                            }`}
+                        >
+                          {active && (
+                            <Check
+                              className={`w-4 h-4 ${swatch.darkText ? 'text-slate-900' : 'text-white'
+                                }`}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                    <label className="w-10 h-10 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-100 flex items-center justify-center cursor-pointer relative overflow-hidden">
+                      <Palette className="w-4 h-4 text-slate-600" />
                       <input
                         type="color"
                         value={data.wallpaperColor}
@@ -6159,237 +6363,274 @@ export default function BioLinkApp() {
                             wallpaperColor: e.target.value,
                           }))
                         }
-                        className="sr-only"
+                        className="opacity-0 absolute inset-0 cursor-pointer"
                       />
                     </label>
-                  </div>
-                  <div className="grid grid-cols-5 gap-3">
-                    {WALLPAPER_SWATCHES.map((swatch) => (
-                      <button
-                        key={swatch.hex}
-                        type="button"
-                        onClick={() =>
-                          updateDataWithHistory((prev) => ({
-                            ...prev,
-                            wallpaperColor: swatch.hex,
-                          }))
-                        }
-                        title={swatch.name}
-                        style={{ backgroundColor: swatch.hex }}
-                        className={`aspect-square rounded-2xl border ${data.wallpaperColor.toUpperCase() === swatch.hex
-                          ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400'
-                          : 'border-slate-300'
-                          }`}
-                      />
-                    ))}
                   </div>
                 </div>
               )}
 
               {designPanel === 'buttons' && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
-                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Style</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['solid', 'outline', 'soft'] as ButtonVariant[]).map((variant) => (
-                        <button
-                          key={variant}
-                          type="button"
-                          onClick={() =>
-                            updateDataWithHistory((prev) => ({ ...prev, buttonVariant: variant }))
-                          }
-                          className={`rounded-full border py-2.5 text-xs font-semibold capitalize ${data.buttonVariant === variant
-                            ? 'border-sky-500 bg-sky-50 text-sky-700'
-                            : 'border-slate-200 text-slate-600'
-                            }`}
-                        >
-                          {variant}
-                        </button>
-                      ))}
+                    <span className="text-xs font-semibold text-slate-700 block mb-3">
+                      Button Style
+                    </span>
+                    <div className="grid grid-cols-3 gap-3">
+                      {(
+                        [
+                          { id: 'solid', label: 'Solid Fill' },
+                          { id: 'outline', label: 'Outline' },
+                          { id: 'soft', label: 'Soft Tint' },
+                        ] as { id: ButtonVariant; label: string }[]
+                      ).map((styleItem) => {
+                        const selected = data.buttonVariant === styleItem.id;
+                        return (
+                          <button
+                            key={styleItem.id}
+                            type="button"
+                            onClick={() =>
+                              updateDataWithHistory((prev) => ({
+                                ...prev,
+                                buttonVariant: styleItem.id,
+                              }))
+                            }
+                            className={`py-3 px-4 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${selected
+                              ? 'border-sky-500 bg-sky-50 text-sky-700'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                              }`}
+                          >
+                            {styleItem.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
+
                   <div>
-                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Color</p>
-                    <div className="grid grid-cols-5 gap-3">
-                      {BUTTON_SWATCHES.map((swatch) => (
-                        <button
-                          key={swatch.bg}
-                          type="button"
-                          onClick={() =>
+                    <span className="text-xs font-semibold text-slate-700 block mb-3">
+                      Button Color
+                    </span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {BUTTON_SWATCHES.map((swatch) => {
+                        const active = data.buttonColor.toUpperCase() === swatch.bg;
+                        return (
+                          <button
+                            key={swatch.bg}
+                            type="button"
+                            onClick={() =>
+                              updateDataWithHistory((prev) => ({
+                                ...prev,
+                                buttonColor: swatch.bg,
+                                buttonTextColor: swatch.text,
+                              }))
+                            }
+                            style={{ backgroundColor: swatch.bg }}
+                            title={swatch.name}
+                            className={`w-10 h-10 rounded-full border transition-transform flex items-center justify-center cursor-pointer ${active
+                              ? 'ring-2 ring-offset-2 ring-sky-500 scale-105 border-slate-300'
+                              : 'border-slate-300 hover:scale-105'
+                              }`}
+                          >
+                            {active && (
+                              <Check style={{ color: swatch.text }} className="w-4 h-4" />
+                            )}
+                          </button>
+                        );
+                      })}
+                      <label className="w-10 h-10 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-100 flex items-center justify-center cursor-pointer relative overflow-hidden">
+                        <Palette className="w-4 h-4 text-slate-600" />
+                        <input
+                          type="color"
+                          value={data.buttonColor}
+                          onChange={(e) =>
                             updateDataWithHistory((prev) => ({
                               ...prev,
-                              buttonColor: swatch.bg,
-                              buttonTextColor: swatch.text,
+                              buttonColor: e.target.value,
+                              buttonTextColor: isColorLight(e.target.value) ? '#0F172A' : '#FFFFFF',
                             }))
                           }
-                          title={swatch.name}
-                          style={{ backgroundColor: swatch.bg }}
-                          className={`aspect-square rounded-full border ${data.buttonColor.toUpperCase() === swatch.bg
-                            ? 'ring-2 ring-sky-500 ring-offset-2 border-slate-400'
-                            : 'border-slate-300'
-                            }`}
+                          className="opacity-0 absolute inset-0 cursor-pointer"
                         />
-                      ))}
+                      </label>
                     </div>
                   </div>
                 </div>
               )}
 
               {designPanel === 'text' && (
-                <div className="space-y-3">
-                  {(['DM Sans', 'Inter', 'Plus Jakarta Sans', 'JetBrains Mono'] as FontChoice[]).map(
-                    (font) => (
-                      <button
-                        key={font}
-                        type="button"
-                        onClick={() =>
-                          updateDataWithHistory((prev) => ({ ...prev, fontFamily: font }))
-                        }
-                        className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 ${data.fontFamily === font
-                          ? 'border-sky-500 bg-sky-50/40'
-                          : 'border-slate-200'
-                          }`}
-                      >
-                        <span className="text-sm font-semibold text-slate-800">{font}</span>
-                        {data.fontFamily === font && <Check className="size-4 text-sky-600" />}
-                      </button>
-                    )
-                  )}
+                <div>
+                  <span className="text-xs font-semibold text-slate-700 block mb-3">
+                    Typography
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(['DM Sans', 'Inter', 'Plus Jakarta Sans', 'JetBrains Mono'] as FontChoice[]).map(
+                      (font) => {
+                        const selected = data.fontFamily === font;
+                        return (
+                          <button
+                            key={font}
+                            type="button"
+                            onClick={() =>
+                              updateDataWithHistory((prev) => ({ ...prev, fontFamily: font }))
+                            }
+                            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${selected
+                              ? 'border-sky-500 bg-sky-50/60 text-sky-700'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                              }`}
+                          >
+                            <p className="text-sm font-bold">AaBbCc</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{font}</p>
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
                 </div>
               )}
 
               {designPanel === 'colors' && (
                 <div className="space-y-4">
-                  {[
-                    [
-                      'Title',
-                      data.titleColor,
-                      (color: string) =>
-                        updateDataWithHistory((prev) => ({ ...prev, titleColor: color })),
-                    ],
-                    [
-                      'Wallpaper',
-                      data.wallpaperColor,
-                      (color: string) =>
-                        updateDataWithHistory((prev) => ({ ...prev, wallpaperColor: color })),
-                    ],
-                    [
-                      'Button',
-                      data.buttonColor,
-                      (color: string) =>
-                        updateDataWithHistory((prev) => ({ ...prev, buttonColor: color })),
-                    ],
-                  ].map(([label, value, onChange]) => (
-                    <label
-                      key={String(label)}
-                      className="flex items-center justify-between rounded-2xl border border-slate-200 p-4"
-                    >
-                      <span className="text-sm font-semibold text-slate-800">{String(label)}</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-xs font-mono uppercase text-slate-500">
-                          {String(value)}
-                        </span>
-                        <span
-                          className="size-9 rounded-full border border-slate-300"
-                          style={{ backgroundColor: String(value) }}
-                        />
-                        <input
-                          type="color"
-                          value={String(value)}
-                          onChange={(e) => (onChange as (color: string) => void)(e.target.value)}
-                          className="sr-only"
-                        />
-                      </span>
-                    </label>
-                  ))}
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                    <div>
+                      <p className="text-xs font-semibold">Title color</p>
+                      <p className="text-[11px] text-slate-400">{data.titleColor}</p>
+                    </div>
+                    <input
+                      type="color"
+                      value={data.titleColor}
+                      onChange={(e) =>
+                        updateDataWithHistory((prev) => ({ ...prev, titleColor: e.target.value }))
+                      }
+                      className="size-10 cursor-pointer rounded-xl border border-slate-200 bg-transparent"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                    <div>
+                      <p className="text-xs font-semibold">Wallpaper color</p>
+                      <p className="text-[11px] text-slate-400">{data.wallpaperColor}</p>
+                    </div>
+                    <input
+                      type="color"
+                      value={data.wallpaperColor}
+                      onChange={(e) =>
+                        updateDataWithHistory((prev) => ({
+                          ...prev,
+                          wallpaperColor: e.target.value,
+                        }))
+                      }
+                      className="size-10 cursor-pointer rounded-xl border border-slate-200 bg-transparent"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+                    <div>
+                      <p className="text-xs font-semibold">Button fill</p>
+                      <p className="text-[11px] text-slate-400">{data.buttonColor}</p>
+                    </div>
+                    <input
+                      type="color"
+                      value={data.buttonColor}
+                      onChange={(e) =>
+                        updateDataWithHistory((prev) => ({
+                          ...prev,
+                          buttonColor: e.target.value,
+                          buttonTextColor: isColorLight(e.target.value) ? '#0F172A' : '#FFFFFF',
+                        }))
+                      }
+                      className="size-10 cursor-pointer rounded-xl border border-slate-200 bg-transparent"
+                    />
+                  </div>
                 </div>
               )}
 
               {designPanel === 'stickers' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">Decorate your page</p>
-                      <p className="mt-1 text-xs text-slate-400">Pilih hingga 8 sticker.</p>
-                    </div>
-                    {data.stickers.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => updateDataWithHistory((prev) => ({ ...prev, stickers: [] }))}
-                        className="text-xs font-semibold text-slate-500 hover:text-rose-600"
-                      >
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-
-                  <div>
-                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Open Stickers</p>
-                    <div className="grid grid-cols-5 gap-2">
-                      {OPEN_STICKERS.map((sticker) => (
-                        <button
-                          key={sticker}
-                          type="button"
-                          disabled={data.stickers.length >= 8}
-                          onClick={() =>
-                            updateDataWithHistory((prev) => ({
-                              ...prev,
-                              stickers: [
-                                ...prev.stickers,
-                                {
-                                  src: sticker,
-                                  x: 82,
-                                  y: 54 + prev.stickers.length * 5,
-                                  scale: 1,
-                                },
-                              ].slice(-8),
-                            }))
-                          }
-                          className={`grid aspect-square place-items-center rounded-xl border text-2xl transition-transform hover:scale-105 ${data.stickers.some((item) => item.src === sticker)
-                            ? 'border-sky-500 bg-sky-50'
-                            : 'border-slate-200'
-                            } disabled:opacity-40`}
-                        >
-                          <img
-                            src={sticker}
-                            alt=""
-                            className="size-10 object-contain"
-                            draggable={false}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-2.5 text-xs font-semibold text-slate-700">Sticker upload</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-slate-500">
+                      Pilih sticker atau unggah gambar, lalu geser langsung di preview untuk
+                      mengatur posisinya.
+                    </p>
                     <button
                       type="button"
                       onClick={() => stickerInputRef.current?.click()}
-                      disabled={data.stickers.length >= 8}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 py-5 text-xs font-semibold text-slate-600 hover:border-sky-400 hover:text-sky-600 disabled:opacity-40"
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
                     >
-                      <Upload className="size-4" /> Upload sticker PNG
+                      <Upload className="size-3.5" /> Upload
                     </button>
                     <input
                       ref={stickerInputRef}
                       type="file"
-                      accept="image/png,image/webp,image/svg+xml"
+                      accept="image/*"
                       onChange={handleStickerUpload}
                       className="hidden"
                     />
                   </div>
-
-                  
+                  <div className="grid grid-cols-5 gap-2.5">
+                    {OPEN_STICKERS.map((sticker, index) => {
+                      const active = data.stickers.some((item) => item.src === sticker);
+                      return (
+                        <button
+                          key={sticker}
+                          type="button"
+                          onClick={() =>
+                            updateDataWithHistory((prev) => ({
+                              ...prev,
+                              stickers: active
+                                ? prev.stickers.filter((item) => item.src !== sticker)
+                                : [
+                                  ...prev.stickers,
+                                  {
+                                    src: sticker,
+                                    x: prev.stickers.length % 2 === 0 ? 12 : 82,
+                                    y: 16 + (prev.stickers.length % 4) * 16,
+                                    scale: 1,
+                                  },
+                                ].slice(-8),
+                            }))
+                          }
+                          className={`grid h-14 place-items-center rounded-2xl border p-2 ${active ? 'border-sky-500 bg-sky-50' : 'border-slate-200'
+                            }`}
+                          title={`OpenSticker ${index + 1}`}
+                        >
+                          <img src={sticker} alt="" className="size-9 object-contain" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {data.stickers.length > 0 && (
+                    <div className="space-y-2 rounded-2xl border border-slate-200 p-3">
+                      <p className="text-xs font-semibold text-slate-700">Sticker aktif</p>
+                      <div className="flex flex-wrap gap-2">
+                        {data.stickers.map((sticker, index) => (
+                          <button
+                            key={`${sticker.src}-${index}`}
+                            type="button"
+                            onClick={() =>
+                              updateDataWithHistory((prev) => ({
+                                ...prev,
+                                stickers: prev.stickers.filter((_, i) => i !== index),
+                              }))
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-700 hover:border-rose-300 hover:text-rose-600"
+                            title="Hapus sticker"
+                          >
+                            <img src={sticker.src} alt="" className="size-4 object-contain" />
+                            <span>#{index + 1}</span>
+                            <X className="size-3" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {designPanel === 'footer' && (
                 <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">Footer badge</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Tampilkan tombol Join di bagian bawah.
+                    <p className="text-xs font-semibold">Show footer badge</p>
+                    <p className="text-[11px] text-slate-400">
+                      Displays Join @{accountUsername || 'user'} on BioLink
                     </p>
                   </div>
                   <button
@@ -6414,81 +6655,67 @@ export default function BioLinkApp() {
           )}
         </section>
 
-        {/* RIGHT SIDE: LIVE PHONE PREVIEW */}
-        <section
-          className={`flex-1 flex items-center justify-center py-4 lg:sticky lg:top-[72px] lg:h-[calc(100vh-72px)] lg:py-4 ${mobileDashMode === 'editor' ? 'hidden lg:flex' : 'flex'
+        {/* RIGHT FLOATING LIVE PREVIEW */}
+        <aside
+          className={`flex-1 flex flex-col items-center justify-center py-4 ${mobileDashMode === 'editor' ? 'hidden lg:flex' : 'flex'
             }`}
         >
-          <div className="flex items-center justify-center gap-3">
-            <LivePhoneMockup
-              data={data}
-              onLinkClick={handleIncrementClick}
-              onShareLink={setActiveShareLink}
-              stickersDraggable
-              onStickerMove={(index, x, y) =>
-                setData((prev) => ({
-                  ...prev,
-                  stickers: prev.stickers.map((sticker, stickerIndex) =>
-                    stickerIndex === index ? { ...sticker, x, y } : sticker
-                  ),
-                }))
-              }
-              onStickerScale={(index, scale) =>
-                setData((prev) => ({
-                  ...prev,
-                  stickers: prev.stickers.map((sticker, stickerIndex) =>
-                    stickerIndex === index ? { ...sticker, scale } : sticker
-                  ),
-                }))
-              }
-              onStickerDelete={(index) =>
-                updateDataWithHistory((prev) => ({
-                  ...prev,
-                  stickers: prev.stickers.filter((_, stickerIndex) => stickerIndex !== index),
-                }))
-              }
-            />
+          <LivePhoneMockup
+            data={data}
+            accountUsername={accountUsername}
+            onLinkClick={handleIncrementClick}
+            onShareLink={setActiveShareLink}
+            stickersDraggable
+            onStickerMove={(index, x, y) =>
+              setData((prev) => ({
+                ...prev,
+                stickers: prev.stickers.map((item, i) =>
+                  i === index ? { ...item, x: Math.round(x), y: Math.round(y) } : item
+                ),
+              }))
+            }
+            onStickerScale={(index, scale) =>
+              setData((prev) => ({
+                ...prev,
+                stickers: prev.stickers.map((item, i) =>
+                  i === index ? { ...item, scale: Number(scale.toFixed(2)) } : item
+                ),
+              }))
+            }
+            onStickerDelete={(index) =>
+              updateDataWithHistory((prev) => ({
+                ...prev,
+                stickers: prev.stickers.filter((_, i) => i !== index),
+              }))
+            }
+          />
 
-            <div className="hidden sm:flex flex-col gap-2 bg-white border border-slate-200 p-1.5 rounded-full shadow-2xs">
-              <button
-                type="button"
-                onClick={handleCopyShareUrl}
-                title="Salin Link Publik"
-                className="w-9 h-9 rounded-full hover:bg-sky-50 text-slate-600 hover:text-sky-600 flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowShareModal(true)}
-                title="Buka QR & Share"
-                className="w-9 h-9 rounded-full hover:bg-sky-50 text-slate-600 hover:text-sky-600 flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </section>
+          <a
+            href={getPublicProfileUrl(accountUsername, data.name || 'main')}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-sky-600 transition-colors"
+          >
+            <span>
+              {APP_URL.replace(/^https?:\/\//, '')}/{accountUsername}/{data.name}
+            </span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </aside>
       </div>
 
-      {/* ADD / EDIT LINK MODAL */}
+      {/* MODAL: ADD / EDIT LINK */}
       {showAddLinkModal && (
-        <div
-          onClick={() => setShowAddLinkModal(false)}
-          className="fixed inset-0 z-50 bg-slate-900/35 flex items-center justify-center p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-xl space-y-4"
-          >
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-xl space-y-5">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">
-                {modalItemType === 'group'
-                  ? editingLink
-                    ? 'Edit Kelompok'
-                    : 'Tambah Kelompok'
-                  : editingLink
-                    ? 'Edit Link'
+                {editingLink
+                  ? modalItemType === 'group'
+                    ? 'Edit Kelompok Link'
+                    : 'Edit Link'
+                  : modalItemType === 'group'
+                    ? 'Tambah Kelompok Link'
                     : 'Tambah Link Baru'}
               </h3>
               <button
@@ -6501,44 +6728,53 @@ export default function BioLinkApp() {
             </div>
 
             <form onSubmit={handleSaveModalLink} className="space-y-4">
+              {!editingLink && (
+                <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setModalItemType('link')}
+                    className={`rounded-xl py-2 text-xs font-semibold transition-colors ${
+                      modalItemType === 'link'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    Tautan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalItemType('group')}
+                    className={`rounded-xl py-2 text-xs font-semibold transition-colors ${
+                      modalItemType === 'group'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    Kelompok Link
+                  </button>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {modalItemType === 'group' ? 'Nama Kelompok' : 'Judul Tombol Link'}
+                  {modalItemType === 'group' ? 'Nama Kelompok' : 'Judul Link'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder={
-                    modalItemType === 'group'
-                      ? 'Contoh: Sosial Media'
-                      : 'Contoh: Portfolio Website'
-                  }
                   value={modalTitle}
                   onChange={(e) => setModalTitle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                  placeholder={
+                    modalItemType === 'group'
+                      ? 'Misal: Produk Digital, Sosial Media'
+                      : 'Misal: Portfolio Website'
+                  }
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                 />
               </div>
 
               {modalItemType === 'link' && (
                 <>
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Masukkan ke Kelompok
-                    <select
-                      value={modalGroupId}
-                      onChange={(event) => setModalGroupId(event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-normal text-slate-900 focus:border-sky-500 focus:bg-white focus:outline-none"
-                    >
-                      <option value="">Tanpa kelompok</option>
-                      {data.links
-                        .filter((item) => item.type === 'group')
-                        .map((group) => (
-                          <option key={group.id} value={group.id}>
-                            {group.title}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                       URL Tujuan
@@ -6546,150 +6782,89 @@ export default function BioLinkApp() {
                     <input
                       type="text"
                       required
-                      placeholder="https://example.com"
                       value={modalUrl}
                       onChange={(e) => setModalUrl(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                      placeholder="https://example.com"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                     />
                   </div>
+
+                  {linkGroups.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Kelompok (Opsional)
+                      </label>
+                      <select
+                        value={modalGroupId}
+                        onChange={(e) => setModalGroupId(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                      >
+                        <option value="">Tanpa kelompok</option>
+                        {linkGroups.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      URL Gambar Preview <span className="font-normal text-slate-400">(opsional)</span>
+                      Custom Preview Web URL (Opsional)
                     </label>
                     <input
-                      type="url"
-                      placeholder="Kosongkan untuk screenshot halaman otomatis"
+                      type="text"
                       value={modalThumbnailUrl}
                       onChange={(e) => setModalThumbnailUrl(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-semibold text-slate-700">
-                        URL Icon Kiri
-                      </label>
-                      <span className="text-[10px] text-slate-400">Kosongkan untuk otomatis</span>
-                    </div>
-                    <input
-                      type="url"
-                      placeholder="https://.../icon.png"
-                      value={modalIconUrl}
-                      onChange={(e) => setModalIconUrl(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                      placeholder="Kosongkan untuk screenshot halaman otomatis"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                     />
                   </div>
                 </>
               )}
 
-              {modalItemType === 'group' && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-semibold text-slate-700">
-                      Ikon Kelompok
-                    </label>
-                    {modalIconUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setModalIconUrl('')}
-                        className="text-[11px] font-medium text-rose-500 hover:underline cursor-pointer"
-                      >
-                        Gunakan ikon default
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                    {Object.entries(LINK_LUCIDE_ICONS).map(([key, { label, icon: IconComp }]) => {
-                      const token = `lucide:${key}`;
-                      const selected = modalIconUrl === token;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          title={label}
-                          aria-label={`Pilih ikon ${label}`}
-                          aria-pressed={selected}
-                          onClick={() => setModalIconUrl(selected ? '' : token)}
-                          className={`h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                            selected
-                              ? 'bg-violet-600 text-white shadow-2xs'
-                              : 'bg-white text-slate-600 border border-slate-200 hover:border-violet-400 hover:text-violet-600'
-                          }`}
-                        >
-                          <IconComp className="w-4 h-4" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className={`w-full rounded-full py-3 text-sm font-semibold text-white transition-colors cursor-pointer ${
-                  modalItemType === 'group'
-                    ? 'bg-violet-600 hover:bg-violet-700'
-                    : 'bg-sky-500 hover:bg-sky-600'
-                }`}
-              >
-                {editingLink
-                  ? 'Simpan Perubahan'
-                  : modalItemType === 'group'
-                    ? 'Tambahkan Kelompok'
-                    : 'Tambahkan Link'}
-              </button>
-
-              {modalItemType === 'link' && (
-                <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-slate-700">
-                    Icon Kiri Link
+                    Icon Tombol (Opsional)
                   </label>
                   {modalIconUrl && (
                     <button
                       type="button"
                       onClick={() => setModalIconUrl('')}
-                      className="text-[11px] font-medium text-rose-500 hover:underline cursor-pointer"
+                      className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
                     >
-                      Reset ke otomatis
+                      Reset default
                     </button>
                   )}
                 </div>
 
-                {/* Grid Pilihan Icon Lucide */}
-                <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  {Object.entries(LINK_LUCIDE_ICONS).map(([key, { label, icon: IconComp }]) => {
-                    const token = `lucide:${key}`;
-                    const selected = modalIconUrl === token;
+                <div className="grid grid-cols-5 gap-1.5 mb-2.5 p-2 rounded-2xl bg-slate-50 border border-slate-200">
+                  {Object.entries(LINK_LUCIDE_ICONS).map(([key, item]) => {
+                    const IconComp = item.icon;
+                    const value = `lucide:${key}`;
+                    const selected = modalIconUrl === value;
                     return (
                       <button
                         key={key}
                         type="button"
-                        title={label}
-                        onClick={() => setModalIconUrl(selected ? '' : token)}
-                        className={`h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${selected
-                            ? 'bg-sky-500 text-white shadow-2xs'
-                            : 'bg-white text-slate-600 border border-slate-200 hover:border-sky-400 hover:text-sky-600'
-                          }`}
+                        onClick={() => setModalIconUrl(value)}
+                        title={item.label}
+                        className={`flex flex-col items-center justify-center gap-1 py-2 rounded-xl border text-[10px] font-medium transition-all cursor-pointer ${
+                          selected
+                            ? 'bg-sky-500 text-white border-sky-500 shadow-2xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-sky-400 hover:text-sky-600'
+                        }`}
                       >
                         <IconComp className="w-4 h-4" />
+                        <span className="truncate max-w-[46px]">{item.label}</span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Upload File Gambar atau Input URL Manual */}
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => linkIconInputRef.current?.click()}
-                    className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-400 hover:text-sky-600 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Upload
-                  </button>
                   <input
                     ref={linkIconInputRef}
                     type="file"
@@ -6697,25 +6872,55 @@ export default function BioLinkApp() {
                     onChange={handleLinkIconUpload}
                     className="hidden"
                   />
+                  <button
+                    type="button"
+                    onClick={() => linkIconInputRef.current?.click()}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Upload Icon
+                  </button>
                   <input
                     type="text"
-                    placeholder="Atau tempel URL icon / kosongkan untuk otomatis"
-                    value={modalIconUrl.startsWith('lucide:') ? '' : modalIconUrl}
+                    value={modalIconUrl.startsWith('data:') || modalIconUrl.startsWith('lucide:') ? '' : modalIconUrl}
                     onChange={(e) => setModalIconUrl(e.target.value)}
-                    className="min-w-0 flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
+                    placeholder={
+                      modalIconUrl.startsWith('data:')
+                        ? 'Icon upload custom aktif'
+                        : modalIconUrl.startsWith('lucide:')
+                          ? `Icon: ${LINK_LUCIDE_ICONS[modalIconUrl.replace('lucide:', '')]?.label || 'Custom'}`
+                          : 'Atau tempel URL icon...'
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-sky-500"
                   />
                 </div>
-                </div>
-              )}
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddLinkModal(false)}
+                  className="flex-1 py-3 rounded-full border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold cursor-pointer"
+                >
+                  Simpan Link
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* MODAL: SHARE SINGLE LINK */}
       {activeShareLink && (
         <div
           onClick={() => setActiveShareLink(null)}
-          className="fixed inset-0 z-[60] bg-slate-900/35 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-50 bg-slate-950/55 flex items-end sm:items-center justify-center p-0 sm:p-4"
         >
           <div
             onClick={(event) => event.stopPropagation()}
@@ -6744,7 +6949,6 @@ export default function BioLinkApp() {
                   src={getLinkIconUrl(activeShareLink)!}
                   alt=""
                   className="w-14 h-14 rounded-2xl object-cover mx-auto mb-3 bg-white"
-                  referrerPolicy="no-referrer"
                 />
               ) : null}
               <p className="font-bold text-sm line-clamp-2">{activeShareLink.title}</p>
@@ -6771,18 +6975,12 @@ export default function BioLinkApp() {
         </div>
       )}
 
-      {/* SHARE & QR MODAL */}
+      {/* MODAL: SHARE & QR CODE */}
       {showShareModal && (
-        <div
-          onClick={() => setShowShareModal(false)}
-          className="fixed inset-0 z-50 bg-slate-900/35 flex items-center justify-center p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white border border-slate-200 rounded-3xl p-6 max-w-sm w-full shadow-xl text-center space-y-5"
-          >
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-sm w-full shadow-xl text-center space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900">Bagikan Halaman Bio</h3>
+              <h3 className="text-base font-bold text-slate-900">Share BioLink</h3>
               <button
                 type="button"
                 onClick={() => setShowShareModal(false)}
@@ -6792,25 +6990,28 @@ export default function BioLinkApp() {
               </button>
             </div>
 
-            <div className="flex flex-col items-center">
-              <SolidQRCode url={getPublicProfileUrl(data.username)} />
-              <p className="font-bold text-sm text-slate-900 mt-3">{data.displayName}</p>
-              <span className="text-xs font-medium text-sky-600 bg-sky-50 border border-sky-200 px-3 py-1 rounded-full mt-1">
-                biolink.id/{data.username}
-              </span>
+            <div className="py-2">
+              <SolidQRCode url={getPublicProfileUrl(accountUsername, data.name || 'main')} />
             </div>
 
-            <button
-              type="button"
-              onClick={handleCopyShareUrl}
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs py-3 rounded-full flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Link Berhasil Disalin' : 'Copy Link'}
-            </button>
+            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5">
+              <span className="text-xs font-mono text-slate-700 truncate">
+                {getPublicProfileUrl(accountUsername, data.name || 'main')}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyShareUrl}
+                className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-sky-500 text-white text-xs font-semibold shrink-0 cursor-pointer"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {createProfileModalElement}
     </div>
   );
 }
