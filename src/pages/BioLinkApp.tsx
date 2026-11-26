@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import {
@@ -1150,7 +1150,8 @@ export default function BioLinkApp() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Login / Register inputs
   const [loginEmail, setLoginEmail] = useState('');
@@ -2016,13 +2017,17 @@ export default function BioLinkApp() {
     };
   }, []);
 
-  // Auto-sync perubahan data ke Supabase (debounce 600ms)
-  useEffect(() => {
-    if (!userId || !activeProfileId || step === 'login' || isHydratingRef.current) return;
+  const saveProfileToCloud = useCallback(async () => {
+    if (!userId || !activeProfileId) {
+      setSyncStatus('error');
+      setSyncError('Tidak ada profil aktif untuk disimpan.');
+      return;
+    }
 
     setSyncStatus('saving');
-    const timeout = setTimeout(async () => {
-      const { error } = await supabase
+    setSyncError(null);
+    try {
+      const { data: savedProfile, error } = await supabase
         .from('bio_profiles')
         .update({
           username: data.username,
@@ -2048,31 +2053,48 @@ export default function BioLinkApp() {
           stickers: data.stickers,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', activeProfileId);
+        .eq('id', activeProfileId)
+        .eq('owner_id', userId)
+        .select('id')
+        .maybeSingle();
 
-      if (!error) {
-        setSyncStatus('saved');
-        setProfiles((prev) =>
-          prev.map((profile) =>
-            profile.id === activeProfileId
-              ? {
-                  ...profile,
-                  username: data.username,
-                  display_name: data.displayName,
-                  avatar_url: data.avatarUrl,
-                }
-              : profile,
-          ),
-        );
-      } else {
-        console.error('Gagal sync ke Supabase:', error.message);
-        setSyncStatus('idle');
-        showToast('Gagal menyimpan perubahan');
+      if (error) throw error;
+      if (!savedProfile) {
+        throw new Error('Profil tidak ditemukan atau Anda tidak memiliki akses.');
       }
-    }, 600);
 
+      setSyncStatus('saved');
+      setProfiles((prev) =>
+        prev.map((profile) =>
+          profile.id === activeProfileId
+            ? {
+                ...profile,
+                username: data.username,
+                display_name: data.displayName,
+                avatar_url: data.avatarUrl,
+              }
+            : profile,
+        ),
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
+      console.error('Gagal sync ke Supabase:', error);
+      setSyncStatus('error');
+      setSyncError(message);
+    }
+  }, [activeProfileId, data, userId]);
+
+  // Auto-sync perubahan data ke Supabase (debounce 600ms)
+  useEffect(() => {
+    if (!userId || !activeProfileId || step === 'login' || isHydratingRef.current) return;
+
+    setSyncStatus('saving');
+    setSyncError(null);
+    const timeout = setTimeout(() => {
+      void saveProfileToCloud();
+    }, 600);
     return () => clearTimeout(timeout);
-  }, [data, userId, activeProfileId, step]);
+  }, [saveProfileToCloud, step, userId, activeProfileId]);
 
   // Automatic transition timer for Step 5 ("Looking good. Let's keep building...")
   useEffect(() => {
@@ -4914,6 +4936,15 @@ export default function BioLinkApp() {
               Tersimpan di cloud
             </span>
           )}
+          {syncStatus === 'error' && (
+            <span
+              role="alert"
+              title={syncError || undefined}
+              className="text-[11px] text-rose-600"
+            >
+              Gagal menyimpan
+            </span>
+          )}
         </div>
 
         {/* Center Account Dropdown Pill */}
@@ -5352,7 +5383,7 @@ export default function BioLinkApp() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => showToast('Pengaturan Header tersimpan')}
+                    onClick={() => void saveProfileToCloud()}
                     className="px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Save
@@ -5804,7 +5835,7 @@ export default function BioLinkApp() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => showToast('Desain berhasil disimpan')}
+                    onClick={() => void saveProfileToCloud()}
                     className="px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Save
