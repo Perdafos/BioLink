@@ -1152,6 +1152,8 @@ export default function BioLinkApp() {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Login / Register inputs
   const [loginEmail, setLoginEmail] = useState('');
@@ -1308,7 +1310,21 @@ export default function BioLinkApp() {
     e.target.value = '';
   };
 
-  const showToast = (_msg: string) => {};
+  const showToast = useCallback((message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(message);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 5000);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     setAudienceLoading(false);
@@ -2017,11 +2033,11 @@ export default function BioLinkApp() {
     };
   }, []);
 
-  const saveProfileToCloud = useCallback(async () => {
+  const saveProfileToCloud = useCallback(async (profileData: BioPageState = data) => {
     if (!userId || !activeProfileId) {
       setSyncStatus('error');
       setSyncError('Tidak ada profil aktif untuk disimpan.');
-      return;
+      return false;
     }
 
     setSyncStatus('saving');
@@ -2030,27 +2046,27 @@ export default function BioLinkApp() {
       const { data: savedProfile, error } = await supabase
         .from('bio_profiles')
         .update({
-          username: data.username,
-          display_name: data.displayName,
-          bio: data.bio,
-          avatar_url: data.avatarUrl,
-          banner_color: data.bannerColor,
-          banner_url: data.bannerUrl,
-          header_layout: data.headerLayout,
-          profile_shape: data.profileShape,
-          title_color: data.titleColor,
-          wallpaper_color: data.wallpaperColor,
-          button_color: data.buttonColor,
-          button_text_color: data.buttonTextColor,
-          button_variant: data.buttonVariant,
-          font_family: data.fontFamily,
-          show_footer_badge: data.showFooterBadge,
-          seo_title: data.seoTitle,
-          seo_description: data.seoDescription,
-          no_index: data.noIndex,
-          socials: data.socials,
-          links: data.links,
-          stickers: data.stickers,
+          username: profileData.username,
+          display_name: profileData.displayName,
+          bio: profileData.bio,
+          avatar_url: profileData.avatarUrl,
+          banner_color: profileData.bannerColor,
+          banner_url: profileData.bannerUrl,
+          header_layout: profileData.headerLayout,
+          profile_shape: profileData.profileShape,
+          title_color: profileData.titleColor,
+          wallpaper_color: profileData.wallpaperColor,
+          button_color: profileData.buttonColor,
+          button_text_color: profileData.buttonTextColor,
+          button_variant: profileData.buttonVariant,
+          font_family: profileData.fontFamily,
+          show_footer_badge: profileData.showFooterBadge,
+          seo_title: profileData.seoTitle,
+          seo_description: profileData.seoDescription,
+          no_index: profileData.noIndex,
+          socials: profileData.socials,
+          links: profileData.links,
+          stickers: profileData.stickers,
           updated_at: new Date().toISOString(),
         })
         .eq('id', activeProfileId)
@@ -2069,20 +2085,29 @@ export default function BioLinkApp() {
           profile.id === activeProfileId
             ? {
                 ...profile,
-                username: data.username,
-                display_name: data.displayName,
-                avatar_url: data.avatarUrl,
+                username: profileData.username,
+                display_name: profileData.displayName,
+                avatar_url: profileData.avatarUrl,
               }
             : profile,
         ),
       );
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Kesalahan tidak diketahui';
       console.error('Gagal sync ke Supabase:', error);
       setSyncStatus('error');
       setSyncError(message);
+      showToast(`Gagal menyimpan: ${message}`);
+      return false;
     }
-  }, [activeProfileId, data, userId]);
+  }, [activeProfileId, data, showToast, userId]);
+
+  const handleManualProfileSave = async () => {
+    if (await saveProfileToCloud()) {
+      showToast('Perubahan berhasil disimpan');
+    }
+  };
 
   // Auto-sync perubahan data ke Supabase (debounce 600ms)
   useEffect(() => {
@@ -2454,32 +2479,58 @@ export default function BioLinkApp() {
   };
 
   const handleSaveSettings = async () => {
-    if (!data.username.trim()) {
+    const username = data.username.trim().toLowerCase();
+    if (!username) {
       showToast('Username tidak boleh kosong');
       return;
     }
-
-    const { data: usernameAvailable, error } = await supabase.rpc('check_username_available', {
-      p_username: data.username,
-    });
-
-    if (error) {
-      showToast(`Gagal memeriksa username: ${error.message}`);
+    if (!/^[a-z0-9-]{1,30}$/.test(username)) {
+      showToast('Username hanya boleh berisi huruf kecil, angka, dan tanda hubung (maksimal 30 karakter).');
+      return;
+    }
+    if (!userId || !activeProfileId) {
+      showToast('Tidak ada profil aktif untuk diperbarui.');
       return;
     }
 
-    const { data: ownProfile } = await supabase
+    const { data: usernameAvailable, error: availabilityError } = await supabase.rpc(
+      'check_username_available',
+      {
+        p_username: username,
+      },
+    );
+
+    if (availabilityError) {
+      showToast(`Gagal memeriksa username: ${availabilityError.message}`);
+      return;
+    }
+
+    const { data: ownProfile, error: profileError } = await supabase
       .from('bio_profiles')
       .select('username')
       .eq('id', activeProfileId)
+      .eq('owner_id', userId)
       .maybeSingle();
 
-    if (usernameAvailable === false && ownProfile?.username !== data.username) {
+    if (profileError) {
+      showToast(`Gagal memeriksa profil: ${profileError.message}`);
+      return;
+    }
+    if (!ownProfile) {
+      showToast('Profil tidak ditemukan atau Anda tidak memiliki akses.');
+      return;
+    }
+
+    if (usernameAvailable === false && ownProfile.username !== username) {
       showToast('Username sudah digunakan');
       return;
     }
 
-    showToast('Pengaturan berhasil disimpan');
+    const profileToSave = { ...data, username };
+    setData(profileToSave);
+    if (await saveProfileToCloud(profileToSave)) {
+      showToast('Username berhasil disimpan');
+    }
   };
 
   const handleChangePassword = async () => {
@@ -3806,6 +3857,7 @@ export default function BioLinkApp() {
                           <span className="px-3 py-2.5 text-sm text-slate-400">biolink.id/</span>
                           <input
                             value={data.username}
+                            maxLength={30}
                             onChange={(e) =>
                               setData((prev) => ({
                                 ...prev,
@@ -4907,7 +4959,28 @@ export default function BioLinkApp() {
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-slate-900 flex flex-col">
-      {/* TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ borderColor: data.buttonColor }}
+          className="fixed right-4 top-16 z-50 w-[calc(100%-2rem)] max-w-sm rounded-xl border-2 bg-white px-4 py-3 pr-11 text-sm font-medium text-slate-800 shadow-lg"
+        >
+          {toastMessage}
+          <button
+            type="button"
+            aria-label="Tutup notifikasi"
+            onClick={() => {
+              if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+              toastTimeoutRef.current = null;
+              setToastMessage(null);
+            }}
+            className="absolute right-2 top-2 grid size-7 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
       {/* TOP BAR */}
       <header className="sticky top-0 z-30 bg-[#F3F4F6]/95 backdrop-blur-sm px-4 sm:px-6 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         {/* Left Hamburger / Stats */}
@@ -5383,7 +5456,7 @@ export default function BioLinkApp() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void saveProfileToCloud()}
+                  onClick={() => void handleManualProfileSave()}
                     className="px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Save
@@ -5835,7 +5908,7 @@ export default function BioLinkApp() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void saveProfileToCloud()}
+                    onClick={() => void handleManualProfileSave()}
                     className="px-4 py-2 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Save
